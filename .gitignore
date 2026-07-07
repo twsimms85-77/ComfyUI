@@ -24,3 +24,6 @@ web_custom_versions/
 filtered-openapi.yaml
 uv.lock
 .comfy_environment
+
+# Claude session mirror notes (full transcripts) — kept local, synced via $OBSIDIAN_VAULT_DIR
+obsidian-mirror/
