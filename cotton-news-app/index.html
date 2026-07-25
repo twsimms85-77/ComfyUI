@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cotton Market Monitor — ICE Cotton No. 2 Futures</title>
+<style>
+  /* ---------- Design tokens (light) ---------- */
+  :root {
+    color-scheme: light;
+    --page:           #f9f9f7;
+    --surface-1:      #fcfcfb;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6;   /* blue  — primary series */
+    --series-2:       #eb6834;   /* orange — secondary series */
+    --series-3:       #1baf7a;   /* aqua */
+    --div-pos:        #2a78d6;   /* diverging: net long  */
+    --div-neg:        #e34948;   /* diverging: net short */
+    --delta-up:       #006300;
+    --delta-down:     #d03b3b;
+    --chip:           #f0efec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page:           #0d0d0d;
+      --surface-1:      #1a1a19;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --series-1:       #3987e5;
+      --series-2:       #d95926;
+      --series-3:       #199e70;
+      --div-pos:        #3987e5;
+      --div-neg:        #e66767;
+      --delta-up:       #0ca30c;
+      --delta-down:     #e66767;
+      --chip:           #262624;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page:           #0d0d0d;
+    --surface-1:      #1a1a19;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255,255,255,0.10);
+    --series-1:       #3987e5;
+    --series-2:       #d95926;
+    --series-3:       #199e70;
+    --div-pos:        #3987e5;
+    --div-neg:        #e66767;
+    --delta-up:       #0ca30c;
+    --delta-down:     #e66767;
+    --chip:           #262624;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  a { color: var(--series-1); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  header.app {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    position: sticky; top: 0; background: var(--page); z-index: 20;
+  }
+  header.app h1 { font-size: 18px; margin: 0; font-weight: 700; }
+  header.app .sub { color: var(--text-muted); font-size: 12px; }
+  header.app .spacer { flex: 1; }
+  .clock { font-variant-numeric: tabular-nums; color: var(--text-secondary); font-size: 12px; }
+  .pill {
+    font-size: 11px; padding: 2px 8px; border-radius: 999px;
+    border: 1px solid var(--border); background: var(--chip); color: var(--text-secondary);
+  }
+  .pill.open  { color: var(--delta-up); }
+  button.ghost {
+    background: none; border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text-secondary); padding: 5px 10px; cursor: pointer; font-size: 12px;
+  }
+  button.ghost:hover { background: var(--chip); }
+
+  main { max-width: 1200px; margin: 0 auto; padding: 20px; display: grid; gap: 20px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  @media (max-width: 900px) { .grid-2, .grid-3 { grid-template-columns: 1fr; } }
+
+  section.card {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 12px; padding: 16px 18px;
+  }
+  section.card h2 { font-size: 15px; margin: 0 0 4px; }
+  section.card .card-sub { color: var(--text-muted); font-size: 12px; margin-bottom: 12px; }
+  .card-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .card-head .right { margin-left: auto; font-size: 12px; }
+
+  .badge-sample {
+    font-size: 10px; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--text-muted); border: 1px dashed var(--baseline);
+    border-radius: 4px; padding: 1px 6px;
+  }
+  .badge-live {
+    font-size: 10px; letter-spacing: .04em; text-transform: uppercase;
+    color: var(--delta-up); border: 1px solid var(--border);
+    border-radius: 4px; padding: 1px 6px;
+  }
+
+  /* ---------- Quote board ---------- */
+  .quotes { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .quote {
+    border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px;
+    cursor: default;
+  }
+  .quote.front { outline: 2px solid var(--series-1); outline-offset: -2px; }
+  .quote .sym { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+  .quote .px  { font-size: 22px; font-weight: 700; margin: 2px 0; }
+  .quote .chg { font-size: 12px; font-variant-numeric: tabular-nums; }
+  .up   { color: var(--delta-up); }
+  .down { color: var(--delta-down); }
+
+  /* ---------- Tables ---------- */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--grid); }
+  th { color: var(--text-muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: var(--chip); }
+
+  /* ---------- News ---------- */
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .tabs button {
+    background: none; border: 1px solid var(--border); border-radius: 999px;
+    padding: 4px 12px; font-size: 12px; color: var(--text-secondary); cursor: pointer;
+  }
+  .tabs button.active { background: var(--text-primary); color: var(--page); border-color: var(--text-primary); }
+  .news-item { padding: 9px 0; border-bottom: 1px solid var(--grid); }
+  .news-item:last-child { border-bottom: none; }
+  .news-item .headline { font-weight: 600; }
+  .news-item .meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+  .news-item .snippet { font-size: 12.5px; color: var(--text-secondary); margin-top: 3px; }
+  .source-links { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--grid); font-size: 12px; color: var(--text-muted); }
+  .source-links a { margin-right: 12px; white-space: nowrap; }
+
+  /* ---------- Stat tiles ---------- */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  .tile { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .tile .k { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+  .tile .v { font-size: 20px; font-weight: 700; margin-top: 2px; }
+  .tile .d { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
+
+  /* ---------- Charts ---------- */
+  .chart-wrap { position: relative; }
+  .chart-wrap svg { display: block; width: 100%; height: auto; }
+  .tooltip {
+    position: absolute; pointer-events: none; z-index: 10; display: none;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 8px;
+    padding: 6px 9px; font-size: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.12);
+    white-space: nowrap;
+  }
+  .tooltip .t-label { color: var(--text-muted); font-size: 11px; }
+  .tooltip .t-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* ---------- Weather ---------- */
+  .wx { display: grid; grid-template-columns: repeat(auto-fit, minmax(155px, 1fr)); gap: 10px; }
+  .wx .cell { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; }
+  .wx .region { font-weight: 600; font-size: 12.5px; }
+  .wx .place { font-size: 11px; color: var(--text-muted); }
+  .wx .temp { font-size: 20px; font-weight: 700; margin-top: 4px; }
+  .wx .rain { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
+  .wx .status { font-size: 11px; color: var(--text-muted); margin-top: 4px; }
+
+  /* ---------- Calendar ---------- */
+  .cal-item { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--grid); }
+  .cal-item:last-child { border-bottom: none; }
+  .cal-when { min-width: 148px; font-weight: 600; font-size: 12.5px; }
+  .cal-what .t { font-weight: 600; }
+  .cal-what .d { font-size: 12px; color: var(--text-secondary); }
+
+  /* ---------- Factors ---------- */
+  details { border-bottom: 1px solid var(--grid); padding: 8px 0; }
+  details:last-of-type { border-bottom: none; }
+  summary { cursor: pointer; font-weight: 600; }
+  details p { margin: 6px 0 2px; color: var(--text-secondary); font-size: 13px; }
+
+  footer { color: var(--text-muted); font-size: 11.5px; padding: 8px 20px 28px; max-width: 1200px; margin: 0 auto; }
+  .err { color: var(--delta-down); font-size: 12px; }
+  .loading { color: var(--text-muted); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<header class="app">
+  <h1>🌱 Cotton Market Monitor</h1>
+  <span class="sub">ICE Cotton No.&nbsp;2 (CT) · cents per pound</span>
+  <span class="pill" id="mktStatus">—</span>
+  <span class="spacer"></span>
+  <span class="clock" id="clock"></span>
+  <button class="ghost" id="themeBtn" title="Toggle light/dark">◐ Theme</button>
+</header>
+
+<main>
+
+  <!-- ============ QUOTE BOARD ============ -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Futures Board</h2>
+      <span class="badge-sample">Sample data</span>
+      <span class="right">
+        Live quotes:
+        <a href="https://www.barchart.com/futures/quotes/CT*0/futures-prices" target="_blank" rel="noopener">Barchart</a> ·
+        <a href="https://www.ice.com/products/254/Cotton-No-2-Futures/data" target="_blank" rel="noopener">ICE</a>
+      </span>
+    </div>
+    <div class="card-sub">Delivery months: Mar (H) · May (K) · Jul (N) · Oct (V) · Dec (Z). Front month outlined.</div>
+    <div class="quotes" id="quoteBoard"></div>
+  </section>
+
+  <!-- ============ PRICE CHART ============ -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Front-Month Continuation — last 90 sessions</h2>
+      <span class="badge-sample">Sample data</span>
+    </div>
+    <div class="card-sub">Settlement, ¢/lb. Hover for the crosshair readout.</div>
+    <div class="chart-wrap" id="priceChart"></div>
+  </section>
+
+  <div class="grid-2">
+    <!-- ============ NEWS ============ -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Cotton News</h2>
+        <span class="badge-sample">Sample headlines</span>
+      </div>
+      <div class="card-sub">Illustrative feed showing the layout — the links below the feed are the real sources to wire in.</div>
+      <div class="tabs" id="newsTabs"></div>
+      <div id="newsFeed"></div>
+      <div class="source-links">
+        Live sources:
+        <a href="https://www.ers.usda.gov/topics/crops/cotton-and-wool/" target="_blank" rel="noopener">USDA ERS Cotton &amp; Wool</a>
+        <a href="https://www.fas.usda.gov/data/search?f%5B0%5D=commodities%3A101" target="_blank" rel="noopener">USDA FAS</a>
+        <a href="https://www.cotlook.com/" target="_blank" rel="noopener">Cotlook</a>
+        <a href="https://www.cottongrower.com/" target="_blank" rel="noopener">Cotton Grower</a>
+        <a href="https://www.agweb.com/markets" target="_blank" rel="noopener">AgWeb Markets</a>
+        <a href="https://www.reuters.com/markets/commodities/" target="_blank" rel="noopener">Reuters Commodities</a>
+        <a href="https://www.cottoninc.com/market-data/" target="_blank" rel="noopener">Cotton Incorporated</a>
+      </div>
+    </section>
+
+    <!-- ============ SUPPLY WATCH ============ -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Supply Watch — U.S. 2026/27</h2>
+        <span class="badge-sample">Sample data</span>
+      </div>
+      <div class="card-sub">The supply-side dials traders check first. Sources: NASS Crop Progress, Acreage, Cotton Ginnings.</div>
+      <div class="tiles">
+        <div class="tile"><div class="k">Planted acres</div><div class="v">9.87 M</div><div class="d">−12% vs prior year</div></div>
+        <div class="tile"><div class="k">Est. abandonment</div><div class="v">17%</div><div class="d">W. Texas dryland stress</div></div>
+        <div class="tile"><div class="k">Good/Excellent</div><div class="v">46%</div><div class="d">Crop Progress, wk 29</div></div>
+        <div class="tile"><div class="k">Squaring</div><div class="v">72%</div><div class="d">5-yr avg 74%</div></div>
+        <div class="tile"><div class="k">Setting bolls</div><div class="v">33%</div><div class="d">5-yr avg 35%</div></div>
+        <div class="tile"><div class="k">Proj. yield</div><div class="v">843 lb/ac</div><div class="d">harvested basis</div></div>
+      </div>
+      <div class="source-links">
+        <a href="https://www.nass.usda.gov/Publications/National_Crop_Progress/" target="_blank" rel="noopener">Crop Progress</a>
+        <a href="https://www.nass.usda.gov/Surveys/Guide_to_NASS_Surveys/Cotton_Ginnings/" target="_blank" rel="noopener">Cotton Ginnings</a>
+        <a href="https://quickstats.nass.usda.gov/" target="_blank" rel="noopener">NASS Quick Stats</a>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ SUPPLY & DEMAND ============ -->
+  <section class="card">
+    <div class="card-head">
+      <h2>Supply &amp; Demand — WASDE-style balance sheet</h2>
+      <span class="badge-sample">Sample data</span>
+      <span class="right"><a href="https://www.usda.gov/oce/commodity/wasde" target="_blank" rel="noopener">Latest WASDE →</a></span>
+    </div>
+    <div class="card-sub">Million 480-lb bales unless noted. Illustrative 2026/27 projections in the WASDE layout.</div>
+    <div class="grid-2">
+      <div>
+        <h3 style="font-size:13px;margin:4px 0 6px;color:var(--text-secondary)">United States</h3>
+        <table id="usBalance"></table>
+      </div>
+      <div>
+        <h3 style="font-size:13px;margin:4px 0 6px;color:var(--text-secondary)">World</h3>
+        <table id="worldBalance"></table>
+      </div>
+    </div>
+    <h3 style="font-size:13px;margin:16px 0 4px;color:var(--text-secondary)">World ending stocks by country (M bales)</h3>
+    <div class="chart-wrap" id="stocksChart"></div>
+  </section>
+
+  <div class="grid-2">
+    <!-- ============ COT ============ -->
+    <section class="card">
+      <div class="card-head">
+        <h2>CFTC Positioning — Managed Money net</h2>
+        <span id="cotBadge" class="badge-sample">Loading…</span>
+        <span class="right"><a href="https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm" target="_blank" rel="noopener">COT reports →</a></span>
+      </div>
+      <div class="card-sub">Cotton No. 2, futures-only, contracts net (long − short). Blue = net long, red = net short. Fetched live from the CFTC public reporting API when reachable.</div>
+      <div id="cotStatus" class="loading">Fetching CFTC data…</div>
+      <div class="chart-wrap" id="cotChart"></div>
+    </section>
+
+    <!-- ============ WEATHER ============ -->
+    <section class="card">
+      <div class="card-head">
+        <h2>Cotton Belt Weather</h2>
+        <span id="wxBadge" class="badge-sample">Loading…</span>
+      </div>
+      <div class="card-sub">Current temp and next-7-day rainfall for key growing regions, via Open-Meteo (no key required).</div>
+      <div class="wx" id="wxGrid"></div>
+      <div class="source-links">
+        <a href="https://www.cpc.ncep.noaa.gov/products/Drought/" target="_blank" rel="noopener">CPC Drought</a>
+        <a href="https://droughtmonitor.unl.edu/" target="_blank" rel="noopener">U.S. Drought Monitor</a>
+        <a href="https://www.imd.gov.in/" target="_blank" rel="noopener">India Met Dept (monsoon)</a>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid-2">
+    <!-- ============ CALENDAR ============ -->
+    <section class="card">
+      <div class="card-head"><h2>Report Calendar</h2></div>
+      <div class="card-sub">The recurring releases that move cotton. All times U.S. Eastern.</div>
+      <div id="calList"></div>
+    </section>
+
+    <!-- ============ CONTRACT SPECS ============ -->
+    <section class="card">
+      <div class="card-head"><h2>Contract Specs — ICE Cotton No.&nbsp;2 (CT)</h2></div>
+      <div class="card-sub">Confirm details on the <a href="https://www.ice.com/products/254/Cotton-No-2-Futures" target="_blank" rel="noopener">ICE product page</a>.</div>
+      <table>
+        <tbody>
+          <tr><td>Contract size</td><td class="num">50,000 lbs (~100 bales)</td></tr>
+          <tr><td>Quotation</td><td class="num">Cents &amp; hundredths of a cent per lb</td></tr>
+          <tr><td>Tick size</td><td class="num">0.01¢/lb = $5.00 per contract</td></tr>
+          <tr><td>1.00¢ move</td><td class="num">$500 per contract</td></tr>
+          <tr><td>Delivery months</td><td class="num">Mar, May, Jul, Oct, Dec</td></tr>
+          <tr><td>Daily price limit</td><td class="num">Variable — 3¢/4¢/5¢ tiers keyed to price level</td></tr>
+          <tr><td>Deliverable grade</td><td class="num">Strict Low Middling 1-2/32″ (base), U.S. origin</td></tr>
+          <tr><td>Delivery points</td><td class="num">Galveston, Houston, Dallas/Ft. Worth, Memphis, Greenville/Spartanburg</td></tr>
+          <tr><td>Trading hours</td><td class="num">9:00 p.m. – 2:20 p.m. ET (next day)</td></tr>
+          <tr><td>First Notice Day</td><td class="num">~5 business days before delivery month</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+
+  <!-- ============ MARKET DRIVERS ============ -->
+  <section class="card">
+    <div class="card-head"><h2>What Moves Cotton — driver cheat sheet</h2></div>
+    <div class="card-sub">A quick reference for reading the news flow above.</div>
+    <div class="grid-2">
+      <div>
+        <h3 style="font-size:13px;margin:4px 0 2px;color:var(--text-secondary)">Supply side</h3>
+        <details open><summary>U.S. acreage &amp; abandonment</summary><p>West Texas grows roughly half the U.S. crop, much of it dryland. Drought there drives abandonment — the gap between planted and harvested acres — and can erase millions of bales between the March Prospective Plantings and final Ginnings numbers.</p></details>
+        <details><summary>Weather windows</summary><p>Planting (Apr–Jun) needs moisture; boll-setting (Jul–Aug) is hurt by extreme heat; harvest (Sep–Dec) is hurt by rain and early freeze. India's monsoon (Jun–Sep) and Xinjiang's growing season matter just as much for world supply.</p></details>
+        <details><summary>India policy (MSP &amp; exports)</summary><p>India is a top producer. Its Minimum Support Price sets a floor under domestic prices, and CCI stockpiling or surprise export/import duty changes shift exportable surplus quickly.</p></details>
+        <details><summary>China reserves &amp; import quota</summary><p>China's state reserve auctions and its sliding-scale import quota decide how much foreign cotton China pulls in. Reserve build = bullish import demand; reserve release = bearish.</p></details>
+        <details><summary>Brazil's expansion</summary><p>Brazil's safrinha cotton (Mato Grosso, planted after soybeans) has made it the world's top exporter in recent years — its harvest (Jun–Aug) and logistics set the tone for the export market.</p></details>
+      </div>
+      <div>
+        <h3 style="font-size:13px;margin:4px 0 2px;color:var(--text-secondary)">Demand &amp; money flow</h3>
+        <details open><summary>Mill demand &amp; export sales</summary><p>Thursday's USDA Export Sales report is the weekly demand pulse — net upland sales and shipments vs. the pace needed to hit the WASDE export target. China, Vietnam, Pakistan, Turkey and Bangladesh are the buyers to watch.</p></details>
+        <details><summary>Polyester substitution</summary><p>Cotton competes with polyester at the fiber level. Cheap crude → cheap polyester → mills blend away from cotton. Watch crude/PTA prices as a slow-moving ceiling on cotton demand.</p></details>
+        <details><summary>Macro &amp; the dollar</summary><p>Cotton is a consumer-discretionary fiber: apparel demand follows global growth. A strong dollar makes U.S. cotton dearer abroad and pressures exports.</p></details>
+        <details><summary>Spec positioning</summary><p>Managed-money extremes (chart at left) mark crowded trades. Heavy net-short + bullish surprise = short-covering rallies; record net-long + bearish surprise = liquidation breaks.</p></details>
+        <details><summary>Certified stocks &amp; basis</summary><p>ICE certified stocks and the on-call sales/purchases report (unfixed mill buying) show physical tightness. Big unfixed on-call sales into a delivery month can fuel squeezes.</p></details>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Sample-data panels are illustrative placeholders (marked <span class="badge-sample">sample data</span>) — verify against the linked primary sources before trading.
+  Live panels fetch from public APIs (CFTC, Open-Meteo) and fall back to labeled sample data if unreachable. Nothing here is trading advice.
+</footer>
+
+<script>
+"use strict";
+
+/* ============================================================
+   Utilities
+   ============================================================ */
+const $ = (sel) => document.querySelector(sel);
+const fmt = (n, d = 2) => n.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+/* Theme toggle: stamp data-theme; toggle wins over OS preference */
+$("#themeBtn").addEventListener("click", () => {
+  const root = document.documentElement;
+  const dark = root.getAttribute("data-theme") === "dark" ||
+    (!root.getAttribute("data-theme") && matchMedia("(prefers-color-scheme: dark)").matches);
+  root.setAttribute("data-theme", dark ? "light" : "dark");
+  renderAllCharts();
+});
+
+/* Clock + ICE market status (CT trades 21:00 ET to 14:20 ET next day, Sun–Fri) */
+function tickClock() {
+  const now = new Date();
+  const et = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+  $("#clock").textContent = et.toLocaleString("en-US", {
+    weekday: "short", month: "short", day: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit"
+  }) + " ET";
+  const day = et.getDay(), mins = et.getHours() * 60 + et.getMinutes();
+  const preClose = mins < 14 * 60 + 20;               // before 2:20 pm ET
+  const postOpen = mins >= 21 * 60;                   // after 9:00 pm ET
+  let open = false;
+  if (day >= 1 && day <= 5) open = preClose || postOpen;  // Mon–Fri
+  if (day === 0) open = postOpen;                          // Sunday night open
+  if (day === 5 && postOpen) open = false;                 // Friday night closed
+  const el = $("#mktStatus");
+  el.textContent = open ? "● ICE session open" : "○ ICE session closed";
+  el.classList.toggle("open", open);
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+/* ============================================================
+   Sample market data (clearly labeled in the UI)
+   ============================================================ */
+const CONTRACTS = [
+  { sym: "CTZ26", label: "Dec ’26", px: 68.42, chg: +0.53, front: true },
+  { sym: "CTH27", label: "Mar ’27", px: 69.80, chg: +0.47 },
+  { sym: "CTK27", label: "May ’27", px: 70.95, chg: +0.41 },
+  { sym: "CTN27", label: "Jul ’27", px: 71.85, chg: +0.38 },
+  { sym: "CTV27", label: "Oct ’27", px: 70.10, chg: -0.12 },
+  { sym: "CTZ27", label: "Dec ’27", px: 69.55, chg: -0.05 },
+];
+
+/* Deterministic pseudo-random walk for the sample price history */
+function samplePriceHistory(n = 90, end = 68.42) {
+  let seed = 20260725;
+  const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+  const steps = Array.from({ length: n - 1 }, () => (rnd() - 0.485) * 0.9);
+  const out = [end];
+  for (let i = steps.length - 1; i >= 0; i--) out.unshift(Math.max(58, out[0] - steps[i]));
+  return out.map((v, i) => ({ i, v: Math.round(v * 100) / 100 }));
+}
+const PRICE_HISTORY = samplePriceHistory();
+
+/* WASDE-style balance sheets (illustrative) */
+const US_BALANCE = [
+  ["Planted acres (M)", "10.01", "9.87"],
+  ["Harvested acres (M)", "8.29", "8.19"],
+  ["Yield (lb/harvested ac)", "836", "843"],
+  ["Beginning stocks", "4.05", "4.60"],
+  ["Production", "14.41", "14.38"],
+  ["Mill use", "1.70", "1.70"],
+  ["Exports", "11.80", "12.20"],
+  ["Ending stocks", "4.60", "4.30"],
+  ["Stocks/use (%)", "34.1", "30.9"],
+  ["Avg. farm price (¢/lb)", "63.0", "65.0"],
+];
+const WORLD_BALANCE = [
+  ["Beginning stocks", "76.9", "78.6"],
+  ["Production", "119.1", "117.7"],
+  ["Consumption", "116.8", "118.1"],
+  ["Trade (exports)", "43.4", "44.6"],
+  ["Ending stocks", "78.6", "78.4"],
+  ["Stocks/use (%)", "67.3", "66.4"],
+];
+const ENDING_STOCKS = [
+  ["China", 36.5], ["India", 10.3], ["Brazil", 5.9], ["United States", 4.3],
+  ["Pakistan", 2.6], ["Australia", 2.2], ["Turkey", 1.8], ["Other", 14.8],
+];
+
+/* Sample COT series (contracts, net) — replaced by live CFTC data when the fetch succeeds */
+const COT_SAMPLE = [
+  -48210,-45120,-41830,-39560,-42100,-38700,-33450,-29800,-31200,-27650,
+  -22400,-18900,-15300,-17800,-12600,-8400,-5100,-7900,-3200,1500,
+  4800,2100,6900,10400,8200,12750
+].map((v, i) => ({ week: i, net: v, date: null }));
+
+/* Sample news */
+const NEWS = [
+  { cat: "Markets", t: "Cotton futures firm as export sales top expectations", src: "Sample — see Reuters/AgWeb", ago: "2h",
+    s: "December cotton settled higher after weekly upland net sales beat the pace needed to reach the USDA export target." },
+  { cat: "Markets", t: "Managed money trims net short for third straight week", src: "Sample — see CFTC COT", ago: "1d",
+    s: "Friday's Commitments of Traders showed funds covering shorts as West Texas dryness worries build." },
+  { cat: "Supply", t: "West Texas dryland acres show heat stress; abandonment estimates creep higher", src: "Sample — see Cotton Grower", ago: "5h",
+    s: "Crop scouts flag deteriorating dryland fields around Lubbock; irrigated acres holding on but wells are running hard." },
+  { cat: "Supply", t: "Crop Progress: squaring behind average pace in the Southwest", src: "Sample — see USDA NASS", ago: "1d",
+    s: "Good/excellent slipped two points nationally; Texas conditions drove the decline." },
+  { cat: "Supply", t: "Brazil harvest passes halfway; logistics congestion at ports", src: "Sample — see Cotlook", ago: "2d",
+    s: "Mato Grosso picking advances ahead of last year, keeping Brazilian offers competitive into Asia." },
+  { cat: "USDA / Policy", t: "WASDE preview: analysts expect modest cut to U.S. production", src: "Sample — see USDA OCE", ago: "3h",
+    s: "The average trade guess trims the U.S. crop on higher abandonment; world ending stocks seen near unchanged." },
+  { cat: "USDA / Policy", t: "India weighs cotton import duty tweak as domestic prices firm", src: "Sample — see FAS GAIN", ago: "2d",
+    s: "Mills lobby for duty-free imports; growers push back citing MSP procurement season ahead." },
+  { cat: "Trade / Demand", t: "Vietnam, Pakistan lead weekly upland buying; China quiet", src: "Sample — see FAS Export Sales", ago: "1d",
+    s: "Shipments continue to run near the weekly pace needed; unshipped commitments concentrated in Southeast Asia." },
+  { cat: "Trade / Demand", t: "Polyester margins widen as crude slips — substitution watch", src: "Sample — see industry press", ago: "3d",
+    s: "Cheaper synthetic fiber pressures blend ratios at Asian mills, a headwind for cotton offtake." },
+  { cat: "Weather", t: "Monsoon tracks near normal across Gujarat and Maharashtra", src: "Sample — see IMD", ago: "8h",
+    s: "Timely rains support India planting; cumulative rainfall running 3% above the long-period average." },
+  { cat: "Weather", t: "Heat dome parks over the Southern Plains into next week", src: "Sample — see NWS/CPC", ago: "4h",
+    s: "Triple-digit highs and scant rain in the forecast for the Texas High Plains during peak bloom." },
+];
+
+/* Report calendar — recurring cadence (check the source links for exact dates) */
+const CALENDAR = [
+  ["Every Mon · 4:00 pm", "USDA Crop Progress", "Weekly condition ratings & development pace, Apr–Nov.", "https://www.nass.usda.gov/Publications/National_Crop_Progress/"],
+  ["Every Thu · 8:30 am", "USDA Export Sales", "Weekly upland/pima net sales & shipments — the demand pulse.", "https://apps.fas.usda.gov/export-sales/cottfax.htm"],
+  ["Every Fri · 3:30 pm", "CFTC Commitments of Traders", "Positions as of Tuesday; managed-money net is the headline.", "https://www.cftc.gov/MarketReports/CommitmentsofTraders/index.htm"],
+  ["Monthly · ~9th–12th · 12:00 pm", "WASDE", "USDA world & U.S. balance sheets — the month's benchmark numbers.", "https://www.usda.gov/oce/commodity/wasde"],
+  ["Twice monthly, Aug–May", "Cotton Ginnings", "Running count of bales ginned — the hard check on crop size.", "https://usda.library.cornell.edu/concern/publications/gt54kn05f"],
+  ["Daily (ICE)", "Certified Stocks & On-Call", "Deliverable stocks and unfixed on-call sales/purchases.", "https://www.ice.com/products/254/Cotton-No-2-Futures/data"],
+  ["Late Mar", "Prospective Plantings", "First survey-based read on new-crop cotton acres.", "https://usda.library.cornell.edu/concern/publications/x633f100h"],
+  ["Late Jun", "Acreage", "Updated planted-acre estimates from June surveys.", "https://usda.library.cornell.edu/concern/publications/j098zb09z"],
+  ["~5 biz days before delivery month", "First Notice Day (CT)", "Delivery notices begin; longs not taking delivery roll before FND.", "https://www.ice.com/products/254/Cotton-No-2-Futures"],
+];
+
+/* ============================================================
+   Renderers
+   ============================================================ */
+function renderQuotes() {
+  $("#quoteBoard").innerHTML = CONTRACTS.map(c => `
+    <div class="quote${c.front ? " front" : ""}" title="${c.sym}">
+      <div class="sym">${c.label} <span style="color:var(--text-muted)">${c.sym}</span></div>
+      <div class="px">${fmt(c.px)}</div>
+      <div class="chg ${c.chg >= 0 ? "up" : "down"}">${c.chg >= 0 ? "▲" : "▼"} ${fmt(Math.abs(c.chg))} (${fmt(Math.abs(c.chg) / (c.px - c.chg) * 100)}%)</div>
+    </div>`).join("");
+}
+
+function renderBalanceTable(el, rows) {
+  el.innerHTML = `<thead><tr><th>Item</th><th class="num">2025/26</th><th class="num">2026/27 proj.</th></tr></thead>
+    <tbody>${rows.map(r => `<tr><td>${r[0]}</td><td class="num">${r[1]}</td><td class="num">${r[2]}</td></tr>`).join("")}</tbody>`;
+}
+
+function renderNews(activeCat) {
+  const cats = ["All", ...new Set(NEWS.map(n => n.cat))];
+  $("#newsTabs").innerHTML = cats.map(c =>
+    `<button class="${c === activeCat ? "active" : ""}" data-cat="${c}">${c}</button>`).join("");
+  document.querySelectorAll("#newsTabs button").forEach(b =>
+    b.addEventListener("click", () => renderNews(b.dataset.cat)));
+  const items = NEWS.filter(n => activeCat === "All" || n.cat === activeCat);
+  $("#newsFeed").innerHTML = items.length ? items.map(n => `
+    <div class="news-item">
+      <div class="headline">${n.t}</div>
+      <div class="snippet">${n.s}</div>
+      <div class="meta">${n.cat} · ${n.src} · ${n.ago} ago</div>
+    </div>`).join("")
+    : `<div class="loading" style="padding:12px 0">No stories in this category yet.</div>`;
+}
+
+function renderCalendar() {
+  $("#calList").innerHTML = CALENDAR.map(c => `
+    <div class="cal-item">
+      <div class="cal-when">${c[0]}</div>
+      <div class="cal-what"><div class="t"><a href="${c[3]}" target="_blank" rel="noopener">${c[1]}</a></div><div class="d">${c[2]}</div></div>
+    </div>`).join("");
+}
+
+/* ---------- Chart helpers (inline SVG) ---------- */
+const NS = "http://www.w3.org/2000/svg";
+function svgEl(tag, attrs) {
+  const el = document.createElementNS(NS, tag);
+  for (const k in attrs) el.setAttribute(k, attrs[k]);
+  return el;
+}
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+function attachTooltip(wrap) {
+  let tip = wrap.querySelector(".tooltip");
+  if (!tip) { tip = document.createElement("div"); tip.className = "tooltip"; wrap.appendChild(tip); }
+  return tip;
+}
+function placeTip(tip, wrap, x, y, html) {
+  tip.innerHTML = html;
+  tip.style.display = "block";
+  const wr = wrap.getBoundingClientRect();
+  let left = x + 14, top = y - 10;
+  tip.style.left = "0px"; tip.style.top = "0px";
+  const tw = tip.offsetWidth, th = tip.offsetHeight;
+  if (left + tw > wr.width - 4) left = x - tw - 14;
+  if (top + th > wr.height - 4) top = wr.height - th - 4;
+  if (top < 4) top = 4;
+  tip.style.left = left + "px"; tip.style.top = top + "px";
+}
+
+/* Line chart with crosshair tooltip (single series — no legend needed) */
+function renderPriceChart() {
+  const wrap = $("#priceChart");
+  wrap.querySelectorAll("svg").forEach(s => s.remove());
+  const W = 1120, H = 260, m = { t: 12, r: 16, b: 24, l: 46 };
+  const data = PRICE_HISTORY;
+  const vs = data.map(d => d.v);
+  const lo = Math.floor(Math.min(...vs)) - 1, hi = Math.ceil(Math.max(...vs)) + 1;
+  const x = i => m.l + (i / (data.length - 1)) * (W - m.l - m.r);
+  const y = v => m.t + (1 - (v - lo) / (hi - lo)) * (H - m.t - m.b);
+
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Front-month cotton settlement, last 90 sessions" });
+
+  // gridlines + y labels
+  const ticks = 4;
+  for (let t = 0; t <= ticks; t++) {
+    const v = lo + (t / ticks) * (hi - lo);
+    const gy = y(v);
+    svg.appendChild(svgEl("line", { x1: m.l, x2: W - m.r, y1: gy, y2: gy, stroke: cssVar("--grid"), "stroke-width": 1 }));
+    const lbl = svgEl("text", { x: m.l - 8, y: gy + 4, "text-anchor": "end", "font-size": 11, fill: cssVar("--text-muted") });
+    lbl.textContent = fmt(v, 1);
+    svg.appendChild(lbl);
+  }
+  // x labels: sessions ago
+  [-90, -60, -30, -1].forEach(off => {
+    const i = data.length + off;
+    const lbl = svgEl("text", { x: x(i), y: H - 6, "text-anchor": "middle", "font-size": 11, fill: cssVar("--text-muted") });
+    lbl.textContent = off === -1 ? "latest" : `${-off} sessions ago`;
+    svg.appendChild(lbl);
+  });
+
+  const path = data.map((d, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(d.v).toFixed(1)}`).join("");
+  svg.appendChild(svgEl("path", { d: path, fill: "none", stroke: cssVar("--series-1"), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }));
+
+  // end-point marker + direct label
+  const last = data[data.length - 1];
+  svg.appendChild(svgEl("circle", { cx: x(last.i), cy: y(last.v), r: 4, fill: cssVar("--series-1"), stroke: cssVar("--surface-1"), "stroke-width": 2 }));
+  const endLbl = svgEl("text", { x: x(last.i) - 8, y: y(last.v) - 10, "text-anchor": "end", "font-size": 12, "font-weight": 700, fill: cssVar("--text-primary") });
+  endLbl.textContent = fmt(last.v) + "¢";
+  svg.appendChild(endLbl);
+
+  // crosshair layer
+  const cross = svgEl("line", { y1: m.t, y2: H - m.b, stroke: cssVar("--baseline"), "stroke-width": 1, "stroke-dasharray": "3 3", visibility: "hidden" });
+  const dot = svgEl("circle", { r: 4.5, fill: cssVar("--series-1"), stroke: cssVar("--surface-1"), "stroke-width": 2, visibility: "hidden" });
+  svg.appendChild(cross); svg.appendChild(dot);
+
+  const tip = attachTooltip(wrap);
+  const hover = svgEl("rect", { x: m.l, y: m.t, width: W - m.l - m.r, height: H - m.t - m.b, fill: "transparent" });
+  hover.addEventListener("mousemove", (e) => {
+    const r = svg.getBoundingClientRect();
+    const px = (e.clientX - r.left) * (W / r.width);
+    const i = Math.max(0, Math.min(data.length - 1, Math.round((px - m.l) / (W - m.l - m.r) * (data.length - 1))));
+    const d = data[i];
+    cross.setAttribute("x1", x(i)); cross.setAttribute("x2", x(i)); cross.setAttribute("visibility", "visible");
+    dot.setAttribute("cx", x(i)); dot.setAttribute("cy", y(d.v)); dot.setAttribute("visibility", "visible");
+    const wr = wrap.getBoundingClientRect();
+    placeTip(tip, wrap, (e.clientX - wr.left), (e.clientY - wr.top),
+      `<div class="t-label">${data.length - 1 - i === 0 ? "Latest session" : (data.length - 1 - i) + " sessions ago"}</div><div class="t-val">${fmt(d.v)} ¢/lb</div>`);
+  });
+  hover.addEventListener("mouseleave", () => { tip.style.display = "none"; cross.setAttribute("visibility", "hidden"); dot.setAttribute("visibility", "hidden"); });
+  svg.appendChild(hover);
+  wrap.appendChild(svg);
+}
+
+/* Horizontal bar chart — world ending stocks (magnitude → one hue) */
+function renderStocksChart() {
+  const wrap = $("#stocksChart");
+  wrap.querySelectorAll("svg").forEach(s => s.remove());
+  const rows = ENDING_STOCKS;
+  const W = 1120, rowH = 26, m = { t: 6, r: 70, b: 6, l: 110 };
+  const H = m.t + m.b + rows.length * rowH;
+  const maxV = Math.max(...rows.map(r => r[1]));
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "World cotton ending stocks by country" });
+  const tip = attachTooltip(wrap);
+
+  rows.forEach((r, i) => {
+    const yTop = m.t + i * rowH + 4;
+    const barH = rowH - 8;
+    const w = Math.max(2, (r[1] / maxV) * (W - m.l - m.r));
+    const name = svgEl("text", { x: m.l - 8, y: yTop + barH / 2 + 4, "text-anchor": "end", "font-size": 12, fill: cssVar("--text-secondary") });
+    name.textContent = r[0];
+    svg.appendChild(name);
+    // rounded data-end only (right side), flat at baseline
+    const rr = 4;
+    const bar = svgEl("path", {
+      d: `M${m.l},${yTop} H${m.l + w - rr} Q${m.l + w},${yTop} ${m.l + w},${yTop + rr} V${yTop + barH - rr} Q${m.l + w},${yTop + barH} ${m.l + w - rr},${yTop + barH} H${m.l} Z`,
+      fill: r[0] === "Other" ? cssVar("--baseline") : cssVar("--series-1")
+    });
+    svg.appendChild(bar);
+    const val = svgEl("text", { x: m.l + w + 8, y: yTop + barH / 2 + 4, "font-size": 12, "font-weight": 600, fill: cssVar("--text-primary") });
+    val.textContent = fmt(r[1], 1);
+    svg.appendChild(val);
+    const hit = svgEl("rect", { x: 0, y: m.t + i * rowH, width: W, height: rowH, fill: "transparent" });
+    hit.addEventListener("mousemove", (e) => {
+      const wr = wrap.getBoundingClientRect();
+      placeTip(tip, wrap, e.clientX - wr.left, e.clientY - wr.top,
+        `<div class="t-label">${r[0]}</div><div class="t-val">${fmt(r[1], 1)} M bales</div>`);
+    });
+    hit.addEventListener("mouseleave", () => tip.style.display = "none");
+    svg.appendChild(hit);
+  });
+  svg.appendChild(svgEl("line", { x1: m.l, x2: m.l, y1: m.t, y2: H - m.b, stroke: cssVar("--baseline"), "stroke-width": 1 }));
+  wrap.appendChild(svg);
+}
+
+/* Diverging bar chart — COT net position (polarity → two poles) */
+let cotData = COT_SAMPLE, cotIsLive = false;
+function renderCotChart() {
+  const wrap = $("#cotChart");
+  wrap.querySelectorAll("svg").forEach(s => s.remove());
+  const data = cotData;
+  if (!data.length) { $("#cotStatus").textContent = "No positioning data available."; return; }
+  const W = 540, H = 220, m = { t: 10, r: 12, b: 22, l: 52 };
+  const maxAbs = Math.max(...data.map(d => Math.abs(d.net))) * 1.1;
+  const x = i => m.l + (i + 0.5) / data.length * (W - m.l - m.r);
+  const bw = Math.max(3, (W - m.l - m.r) / data.length - 2);   // 2px surface gap between bars
+  const y = v => m.t + (1 - (v + maxAbs) / (2 * maxAbs)) * (H - m.t - m.b);
+  const y0 = y(0);
+
+  const svg = svgEl("svg", { viewBox: `0 0 ${W} ${H}`, role: "img", "aria-label": "Managed money net position in cotton futures" });
+  // y gridlines/labels
+  [-maxAbs, -maxAbs / 2, 0, maxAbs / 2, maxAbs].forEach(v => {
+    const gy = y(v);
+    svg.appendChild(svgEl("line", { x1: m.l, x2: W - m.r, y1: gy, y2: gy, stroke: v === 0 ? cssVar("--baseline") : cssVar("--grid"), "stroke-width": 1 }));
+    const lbl = svgEl("text", { x: m.l - 6, y: gy + 4, "text-anchor": "end", "font-size": 10, fill: cssVar("--text-muted") });
+    lbl.textContent = (v / 1000).toFixed(0) + "k";
+    svg.appendChild(lbl);
+  });
+  const tip = attachTooltip(wrap);
+  data.forEach((d, i) => {
+    const pos = d.net >= 0;
+    const top = pos ? y(d.net) : y0;
+    const h = Math.max(1.5, Math.abs(y(d.net) - y0));
+    const rr = Math.min(4, bw / 2, h);
+    const bx = x(i) - bw / 2;
+    // rounded at the data end only; flat at the zero baseline
+    const dPath = pos
+      ? `M${bx},${y0} V${top + rr} Q${bx},${top} ${bx + rr},${top} H${bx + bw - rr} Q${bx + bw},${top} ${bx + bw},${top + rr} V${y0} Z`
+      : `M${bx},${y0} V${top + h - rr} Q${bx},${top + h} ${bx + rr},${top + h} H${bx + bw - rr} Q${bx + bw},${top + h} ${bx + bw},${top + h - rr} V${y0} Z`;
+    const bar = svgEl("path", { d: dPath, fill: pos ? cssVar("--div-pos") : cssVar("--div-neg") });
+    svg.appendChild(bar);
+    const hit = svgEl("rect", { x: bx - 1, y: m.t, width: bw + 2, height: H - m.t - m.b, fill: "transparent" });
+    hit.addEventListener("mousemove", (e) => {
+      const wr = wrap.getBoundingClientRect();
+      placeTip(tip, wrap, e.clientX - wr.left, e.clientY - wr.top,
+        `<div class="t-label">${d.date ? d.date : "Week " + (data.length - i) + " ago"}</div><div class="t-val">${d.net >= 0 ? "+" : "−"}${Math.abs(d.net).toLocaleString()} contracts net</div>`);
+    });
+    hit.addEventListener("mouseleave", () => tip.style.display = "none");
+    svg.appendChild(hit);
+  });
+  // x labels
+  const first = data[0], lastD = data[data.length - 1];
+  const l1 = svgEl("text", { x: m.l, y: H - 6, "font-size": 10, fill: cssVar("--text-muted") });
+  l1.textContent = first.date || `${data.length} wks ago`;
+  svg.appendChild(l1);
+  const l2 = svgEl("text", { x: W - m.r, y: H - 6, "text-anchor": "end", "font-size": 10, fill: cssVar("--text-muted") });
+  l2.textContent = lastD.date || "latest";
+  svg.appendChild(l2);
+  wrap.appendChild(svg);
+
+  const latest = data[data.length - 1];
+  $("#cotStatus").innerHTML =
+    `Latest: <b class="${latest.net >= 0 ? "up" : "down"}">${latest.net >= 0 ? "+" : "−"}${Math.abs(latest.net).toLocaleString()}</b> contracts net` +
+    (latest.date ? ` (as of ${latest.date})` : "") +
+    (cotIsLive ? "" : ` — <span class="err">live fetch unavailable, showing sample series</span>`);
+}
+
+/* ---------- Live CFTC COT fetch (Socrata public API, CORS-enabled) ---------- */
+async function loadCot() {
+  const url = "https://publicreporting.cftc.gov/resource/6dca-aqww.json" +
+    "?$select=report_date_as_yyyy_mm_dd,m_money_positions_long_all,m_money_positions_short_all,contract_market_name" +
+    "&$where=" + encodeURIComponent("upper(contract_market_name) like 'COTTON NO. 2%'") +
+    "&$order=report_date_as_yyyy_mm_dd DESC&$limit=26";
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(12000) });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const rows = await res.json();
+    if (!Array.isArray(rows) || !rows.length) throw new Error("empty result");
+    cotData = rows.reverse().map((r, i) => ({
+      week: i,
+      date: (r.report_date_as_yyyy_mm_dd || "").slice(0, 10),
+      net: (parseInt(r.m_money_positions_long_all, 10) || 0) - (parseInt(r.m_money_positions_short_all, 10) || 0),
+    }));
+    cotIsLive = true;
+    const b = $("#cotBadge"); b.textContent = "Live · CFTC"; b.className = "badge-live";
+  } catch (e) {
+    cotIsLive = false;
+    const b = $("#cotBadge"); b.textContent = "Sample data"; b.className = "badge-sample";
+  }
+  renderCotChart();
+}
+
+/* ---------- Live weather (Open-Meteo, keyless + CORS-enabled) ---------- */
+const REGIONS = [
+  { region: "TX High Plains", place: "Lubbock, TX", lat: 33.58, lon: -101.86 },
+  { region: "Coastal Bend", place: "Corpus Christi, TX", lat: 27.80, lon: -97.40 },
+  { region: "Mid-South Delta", place: "Memphis, TN", lat: 35.15, lon: -90.05 },
+  { region: "Southeast", place: "Tifton, GA", lat: 31.45, lon: -83.51 },
+  { region: "India — Gujarat", place: "Ahmedabad", lat: 23.03, lon: 72.58 },
+  { region: "Brazil — Mato Grosso", place: "Cuiabá", lat: -15.60, lon: -56.10 },
+  { region: "China — Xinjiang", place: "Ürümqi", lat: 43.83, lon: 87.62 },
+];
+function renderWxCells(cells) {
+  $("#wxGrid").innerHTML = cells.join("");
+}
+async function loadWeather() {
+  renderWxCells(REGIONS.map(r => `
+    <div class="cell"><div class="region">${r.region}</div><div class="place">${r.place}</div>
+    <div class="status">Loading…</div></div>`));
+  const lats = REGIONS.map(r => r.lat).join(","), lons = REGIONS.map(r => r.lon).join(",");
+  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lats}&longitude=${lons}` +
+    `&current=temperature_2m&daily=precipitation_sum&forecast_days=7` +
+    `&temperature_unit=fahrenheit&precipitation_unit=inch&timezone=auto`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(12000) });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const j = await res.json();
+    const arr = Array.isArray(j) ? j : [j];
+    renderWxCells(REGIONS.map((r, i) => {
+      const d = arr[i];
+      if (!d || !d.current) return `<div class="cell"><div class="region">${r.region}</div><div class="place">${r.place}</div><div class="status err">No data</div></div>`;
+      const rain = (d.daily && d.daily.precipitation_sum ? d.daily.precipitation_sum : [])
+        .reduce((a, b) => a + (b || 0), 0);
+      return `<div class="cell">
+        <div class="region">${r.region}</div><div class="place">${r.place}</div>
+        <div class="temp">${Math.round(d.current.temperature_2m)}°F</div>
+        <div class="rain">7-day rain: ${fmt(rain, 2)}″</div>
+      </div>`;
+    }));
+    const b = $("#wxBadge"); b.textContent = "Live · Open-Meteo"; b.className = "badge-live";
+  } catch (e) {
+    const b = $("#wxBadge"); b.textContent = "Unavailable"; b.className = "badge-sample";
+    renderWxCells(REGIONS.map(r => `
+      <div class="cell"><div class="region">${r.region}</div><div class="place">${r.place}</div>
+      <div class="status err">Weather fetch failed — check network, then reload.</div></div>`));
+  }
+}
+
+/* ============================================================
+   Boot
+   ============================================================ */
+function renderAllCharts() {
+  renderPriceChart();
+  renderStocksChart();
+  renderCotChart();
+}
+renderQuotes();
+renderBalanceTable($("#usBalance"), US_BALANCE);
+renderBalanceTable($("#worldBalance"), WORLD_BALANCE);
+renderNews("All");
+renderCalendar();
+renderAllCharts();
+loadCot();
+loadWeather();
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderAllCharts);
+window.addEventListener("resize", () => {}); // SVGs are viewBox-scaled; no re-render needed
+</script>
+</body>
+</html>
