@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trade Narrator</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --panel: #131a22;
+    --panel-2: #1a232e;
+    --line: #24303d;
+    --text: #e6edf3;
+    --muted: #8b98a5;
+    --locked: #6e7681;
+    --green: #3fdf8c;
+    --green-dim: rgba(63,223,140,.14);
+    --blue: #4da3ff;
+    --blue-dim: rgba(77,163,255,.14);
+    --red: #ff5c5c;
+    --red-dim: rgba(255,92,92,.14);
+    --amber: #ffc24d;
+    --amber-dim: rgba(255,194,77,.12);
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: var(--sans); font-size: 16px; line-height: 1.45;
+    -webkit-font-smoothing: antialiased;
+  }
+  .app { max-width: 720px; margin: 0 auto; padding: 0 14px 96px; }
+  header.top {
+    display: flex; align-items: baseline; justify-content: space-between;
+    padding: 18px 2px 10px;
+  }
+  header.top h1 {
+    margin: 0; font-size: 17px; font-weight: 800; letter-spacing: .12em;
+    text-transform: uppercase;
+  }
+  header.top h1 .tick { color: var(--green); }
+  .daystat { font-family: var(--mono); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .daystat b { color: var(--text); }
+  .daystat b.neg { color: var(--red); }
+  .daystat b.pos { color: var(--green); }
+
+  nav.tabs {
+    position: fixed; bottom: 0; left: 0; right: 0; z-index: 40;
+    background: rgba(11,15,20,.96); border-top: 1px solid var(--line);
+    backdrop-filter: blur(8px);
+  }
+  nav.tabs .row { max-width: 720px; margin: 0 auto; display: flex; }
+  nav.tabs button {
+    flex: 1; background: none; border: none; color: var(--muted);
+    font: inherit; font-size: 11px; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; padding: 12px 4px 14px; cursor: pointer;
+    border-top: 2px solid transparent; min-height: 52px;
+  }
+  nav.tabs button.on { color: var(--text); border-top-color: var(--green); }
+  nav.tabs button:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+    outline: 2px solid var(--blue); outline-offset: 2px;
+  }
+
+  h2.screen {
+    font-size: 13px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin: 14px 2px 12px;
+  }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 14px; margin-bottom: 12px;
+  }
+  .card.eligible { border-color: rgba(63,223,140,.45); }
+  .card.intrade { border-color: rgba(77,163,255,.45); }
+  .rowline { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .sym { font-family: var(--mono); font-weight: 700; font-size: 18px; }
+  .mname { color: var(--muted); font-size: 13px; }
+  .badge {
+    font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase;
+    padding: 4px 10px; border-radius: 999px; white-space: nowrap;
+  }
+  .badge.locked { color: var(--locked); background: rgba(110,118,129,.15); }
+  .badge.eligible { color: var(--green); background: var(--green-dim); }
+  .badge.intrade { color: var(--blue); background: var(--blue-dim); }
+  .watchline {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    font-family: var(--mono); font-size: 13px; color: var(--muted);
+    margin-top: 8px; font-variant-numeric: tabular-nums;
+  }
+  .watchline .val { color: var(--text); font-weight: 700; }
+  .watchline .val.met { color: var(--green); }
+  .actions { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+  button.btn {
+    font: inherit; font-weight: 700; font-size: 14px; cursor: pointer;
+    border-radius: 8px; padding: 10px 16px; min-height: 44px;
+    border: 1px solid var(--line); background: var(--panel-2); color: var(--text);
+  }
+  button.btn.primary { background: var(--green); border-color: var(--green); color: #062112; }
+  button.btn.blue { background: var(--blue); border-color: var(--blue); color: #041423; }
+  button.btn.danger { background: var(--red); border-color: var(--red); color: #2a0505; }
+  button.btn.ghost { background: none; }
+  button.btn:disabled { opacity: .45; cursor: not-allowed; }
+  button.btn.small { min-height: 36px; padding: 6px 12px; font-size: 13px; }
+
+  .lockmsg { color: var(--locked); font-size: 13px; margin-top: 8px; }
+  .warn {
+    background: var(--amber-dim); border: 1px solid rgba(255,194,77,.4); color: var(--amber);
+    border-radius: 8px; padding: 10px 12px; font-size: 14px; margin-top: 10px;
+  }
+  .err {
+    background: var(--red-dim); border: 1px solid rgba(255,92,92,.4); color: var(--red);
+    border-radius: 8px; padding: 10px 12px; font-size: 14px; margin-top: 10px;
+  }
+
+  label.f { display: block; margin-top: 12px; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  input, select, textarea {
+    width: 100%; margin-top: 5px; font: inherit; color: var(--text);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px;
+    padding: 10px 12px; min-height: 44px;
+  }
+  input[type=number], .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  textarea { min-height: 88px; resize: vertical; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  @media (max-width: 420px) { .grid3 { grid-template-columns: 1fr 1fr; } }
+
+  .overlay {
+    position: fixed; inset: 0; z-index: 50; background: rgba(4,7,10,.72);
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  @media (min-width: 600px) { .overlay { align-items: center; } }
+  .sheet {
+    background: var(--panel); border: 1px solid var(--line);
+    border-radius: 14px 14px 0 0; width: 100%; max-width: 600px;
+    max-height: 92vh; overflow-y: auto; padding: 18px 16px 24px;
+  }
+  @media (min-width: 600px) { .sheet { border-radius: 14px; } }
+  .sheet h3 { margin: 0 0 4px; font-size: 16px; letter-spacing: .04em; text-transform: uppercase; }
+  .sheet .sub { color: var(--muted); font-size: 13px; margin: 0 0 8px; }
+  .steps { display: flex; gap: 6px; margin: 10px 0 4px; }
+  .steps span { flex: 1; height: 3px; border-radius: 2px; background: var(--line); }
+  .steps span.done { background: var(--green); }
+
+  .check { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .check input { width: 22px; height: 22px; min-height: 0; margin: 2px 0 0; accent-color: var(--green); flex: none; }
+  .check span { font-size: 15px; }
+
+  .calcout { margin-top: 14px; border-top: 1px dashed var(--line); padding-top: 8px; }
+  .calcrow {
+    display: flex; justify-content: space-between; padding: 7px 0;
+    font-size: 14px; color: var(--muted);
+  }
+  .calcrow b { font-family: var(--mono); color: var(--text); font-variant-numeric: tabular-nums; font-size: 15px; }
+  .calcrow.big b { font-size: 20px; color: var(--green); }
+
+  .banner {
+    border-radius: 10px; padding: 18px 14px; text-align: center; margin-top: 12px;
+    font-weight: 800; font-size: 20px; letter-spacing: .06em; text-transform: uppercase;
+  }
+  .banner small { display: block; font-weight: 600; font-size: 12px; letter-spacing: .04em; margin-top: 4px; opacity: .85; text-transform: none; }
+  .banner.hold { background: var(--panel-2); color: var(--muted); border: 1px solid var(--line); }
+  .banner.profit { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+  .banner.stop { background: var(--red-dim); color: var(--red); border: 1px solid var(--red); }
+  .banner.idle { background: var(--panel-2); color: var(--locked); border: 1px dashed var(--line); font-size: 14px; }
+
+  .planmeta { font-family: var(--mono); font-size: 13px; color: var(--muted); margin-top: 8px; display: flex; gap: 14px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+  .planmeta b { color: var(--text); }
+  .crit { margin-top: 10px; font-size: 14px; }
+  .crit h4 { margin: 10px 0 4px; font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .crit p { margin: 0; white-space: pre-wrap; }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .tile .k { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .tile .v { font-family: var(--mono); font-size: 20px; font-weight: 700; margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .tile .v.pos { color: var(--green); } .tile .v.neg { color: var(--red); }
+  .tile.override .v { color: var(--red); }
+
+  .tablewrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  table { border-collapse: collapse; width: 100%; min-width: 560px; font-size: 13px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); position: sticky; top: 0; background: var(--panel); }
+  td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  td .pos { color: var(--green); } td .neg { color: var(--red); } td .ovr { color: var(--red); font-weight: 700; }
+  tr.rowbtn { cursor: pointer; } tr.rowbtn:hover { background: var(--panel-2); }
+
+  .log { font-family: var(--mono); font-size: 12.5px; margin-top: 10px; border-left: 2px solid var(--line); padding-left: 10px; }
+  .log div { padding: 3px 0; color: var(--muted); }
+  .log time { color: var(--locked); margin-right: 8px; }
+
+  .empty { text-align: center; color: var(--muted); padding: 36px 16px; border: 1px dashed var(--line); border-radius: 10px; font-size: 14px; }
+  .empty b { display: block; color: var(--text); margin-bottom: 6px; }
+  .footer-note { color: var(--locked); font-size: 12px; text-align: center; margin-top: 18px; }
+  @media (prefers-reduced-motion: no-preference) {
+    .sheet { animation: up .18s ease-out; }
+    @keyframes up { from { transform: translateY(14px); opacity: .6; } to { transform: none; opacity: 1; } }
+  }
+</style>
+
+<div class="app">
+  <header class="top">
+    <h1><span class="tick">▮</span> Trade Narrator</h1>
+    <div class="daystat" id="daystat"></div>
+  </header>
+  <main id="view"></main>
+</div>
+
+<nav class="tabs" aria-label="Screens">
+  <div class="row">
+    <button data-tab="watch">Watch</button>
+    <button data-tab="sizer">Sizer</button>
+    <button data-tab="trades">Trades</button>
+    <button data-tab="journal">Journal</button>
+    <button data-tab="settings">Settings</button>
+  </div>
+</nav>
+
+<div id="modalRoot"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- storage ---------- */
+  var KEY = "tradeNarrator.v1";
+  var memoryStore = null;
+  function seed() {
+    return {
+      settings: { accountSize: 10000, riskPct: 1, maxOpenTrades: 2, maxDailyLoss: 300 },
+      markets: [
+        mkMarket("SPY", "S&P 500 ETF", "stock", "% daily range", "above", 1.5, 2.1),
+        mkMarket("/ES", "E-mini S&P Futures", "futures", "ATR (14)", "above", 45, 32),
+        mkMarket("BTC/USD", "Bitcoin", "crypto", "% daily range", "above", 4, null)
+      ],
+      plans: [],
+      trades: [],
+      sample: true
+    };
+  }
+  function mkMarket(sym, name, type, metric, dir, thr, cur) {
+    return { id: uid(), symbol: sym, name: name, type: type,
+      watch: { metric: metric, direction: dir, threshold: thr, currentValue: cur,
+               lastChecked: cur == null ? null : new Date().toISOString() } };
+  }
+  function load() {
+    try {
+      var raw = localStorage.getItem(KEY);
+      if (raw) return JSON.parse(raw);
+    } catch (e) { /* private mode etc. */ }
+    return memoryStore || (memoryStore = seed());
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(S)); }
+    catch (e) { memoryStore = S; }
+  }
+  function uid() { return "id" + Math.random().toString(36).slice(2, 10) + Date.now().toString(36); }
+  var S = load();
+
+  /* ---------- helpers ---------- */
+  function $(sel, el) { return (el || document).querySelector(sel); }
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+  function money(n) {
+    if (n == null || isNaN(n)) return "—";
+    var sign = n < 0 ? "-" : "";
+    return sign + "$" + Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+  function px(n) { return n == null || isNaN(n) ? "—" : Number(n).toLocaleString("en-US", { maximumFractionDigits: 4 }); }
+  function num(v) { var n = parseFloat(v); return isNaN(n) ? null : n; }
+  function nowIso() { return new Date().toISOString(); }
+  function hhmm(iso) {
+    var d = new Date(iso);
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + " " +
+           d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  }
+  function isToday(iso) {
+    if (!iso) return false;
+    var d = new Date(iso), t = new Date();
+    return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth() && d.getDate() === t.getDate();
+  }
+
+  function criteriaMet(m) {
+    var w = m.watch;
+    if (w.currentValue == null) return false;
+    return w.direction === "above" ? w.currentValue >= w.threshold : w.currentValue <= w.threshold;
+  }
+  function activePlan(marketId) {
+    return S.plans.find(function (p) { return p.marketId === marketId && p.status === "ACTIVE"; });
+  }
+  function marketStatus(m) {
+    if (activePlan(m.id)) return "intrade";
+    return criteriaMet(m) ? "eligible" : "locked";
+  }
+  function marketById(id) { return S.markets.find(function (m) { return m.id === id; }); }
+  function openTrades() { return S.plans.filter(function (p) { return p.status === "ACTIVE"; }); }
+  function todayRealizedLoss() {
+    return S.trades.reduce(function (sum, t) {
+      return sum + (isToday(t.closedAt) && t.pnl < 0 ? t.pnl : 0);
+    }, 0);
+  }
+  function todayPnl() {
+    return S.trades.reduce(function (sum, t) { return sum + (isToday(t.closedAt) ? t.pnl : 0); }, 0);
+  }
+  function narrate(plan, msg) {
+    plan.log.push({ t: nowIso(), msg: msg });
+  }
+
+  /* Blockers for opening a NEW plan (returns message or null) */
+  function tradeBlocker() {
+    if (openTrades().length >= S.settings.maxOpenTrades)
+      return "Max open trades reached (" + S.settings.maxOpenTrades + "). Close a trade before planning a new one.";
+    var loss = todayRealizedLoss();
+    if (Math.abs(loss) >= S.settings.maxDailyLoss)
+      return "Daily loss limit hit (" + money(loss) + " against a " + money(-S.settings.maxDailyLoss) + " limit). Done for today — the narrator says walk away.";
+    return null;
+  }
+
+  /* Exit signal: STOP has priority over target. Returns {kind, label, detail} */
+  function exitSignal(plan, price) {
+    if (price == null) return null;
+    var long = plan.direction === "long";
+    var stopHit = long ? price <= plan.stopPrice : price >= plan.stopPrice;
+    var targetHit = long ? price >= plan.targetPrice : price <= plan.targetPrice;
+    if (stopHit) return { kind: "stop", label: "STOP — exit now", detail: "Stop-loss hit at " + px(plan.stopPrice) + ". No debate. Get out." };
+    if (targetHit) return { kind: "profit", label: "Take profit — get out", detail: "Target " + px(plan.targetPrice) + " reached. Take the win." };
+    return { kind: "hold", label: "Hold", detail: "No exit criteria met. Stop " + px(plan.stopPrice) + " · Target " + px(plan.targetPrice) + "." };
+  }
+
+  function positionCalc(account, riskPct, entry, stop) {
+    if ([account, riskPct, entry, stop].some(function (v) { return v == null || isNaN(v); })) return null;
+    var perUnit = Math.abs(entry - stop);
+    if (perUnit <= 0) return { error: "Entry and stop can't be the same price." };
+    var riskDollars = account * (riskPct / 100);
+    var size = Math.floor(riskDollars / perUnit);
+    return {
+      riskDollars: riskDollars, perUnit: perUnit, size: size,
+      committed: size * entry, actualRisk: size * perUnit
+    };
+  }
+
+  /* ---------- tabs / render ---------- */
+  var tab = "watch";
+  var tabBtns = document.querySelectorAll("nav.tabs button");
+  tabBtns.forEach(function (b) {
+    b.addEventListener("click", function () { tab = b.dataset.tab; render(); });
+  });
+
+  function render() {
+    tabBtns.forEach(function (b) { b.classList.toggle("on", b.dataset.tab === tab); });
+    var pnl = todayPnl();
+    $("#daystat").innerHTML = "Today <b class=\"" + (pnl > 0 ? "pos" : pnl < 0 ? "neg" : "") + "\">" + money(pnl) + "</b>" +
+      " · Open <b>" + openTrades().length + "/" + S.settings.maxOpenTrades + "</b>";
+    var v = $("#view");
+    if (tab === "watch") v.innerHTML = renderWatch();
+    else if (tab === "sizer") v.innerHTML = renderSizer();
+    else if (tab === "trades") v.innerHTML = renderTrades();
+    else if (tab === "journal") v.innerHTML = renderJournal();
+    else v.innerHTML = renderSettings();
+    bind(v);
+    save();
+  }
+
+  /* ---------- WATCH ---------- */
+  function renderWatch() {
+    var order = { eligible: 0, intrade: 1, locked: 2 };
+    var ms = S.markets.slice().sort(function (a, b) { return order[marketStatus(a)] - order[marketStatus(b)]; });
+    var blocker = tradeBlocker();
+    var h = "<h2 class=\"screen\">Market watch</h2>";
+    if (blocker) h += "<div class=\"warn\">" + esc(blocker) + "</div><div style=\"height:12px\"></div>";
+    if (!ms.length) {
+      h += "<div class=\"empty\"><b>No markets yet</b>Add a market and define the volatility criteria that must be met before you're allowed to trade it.</div>";
+    }
+    ms.forEach(function (m) {
+      var st = marketStatus(m);
+      var w = m.watch;
+      var met = criteriaMet(m);
+      var badge = st === "intrade" ? "<span class=\"badge intrade\">In trade</span>"
+        : st === "eligible" ? "<span class=\"badge eligible\">Eligible</span>"
+        : "<span class=\"badge locked\">Locked</span>";
+      h += "<div class=\"card " + st + "\">" +
+        "<div class=\"rowline\"><div><span class=\"sym\">" + esc(m.symbol) + "</span> <span class=\"mname\">" + esc(m.name) + " · " + esc(m.type) + "</span></div>" + badge + "</div>" +
+        "<div class=\"watchline\">" + esc(w.metric) + " <span class=\"val " + (met ? "met" : "") + "\">" + (w.currentValue == null ? "not checked" : px(w.currentValue)) + "</span>" +
+        " needs " + (w.direction === "above" ? "≥" : "≤") + " " + px(w.threshold) +
+        (w.lastChecked ? " · checked " + hhmm(w.lastChecked) : "") + "</div>" +
+        "<div class=\"actions\">" +
+        "<input class=\"num\" style=\"flex:1;min-width:110px;margin:0\" type=\"number\" step=\"any\" inputmode=\"decimal\" placeholder=\"Current " + esc(w.metric) + "\" data-refresh-input=\"" + m.id + "\">" +
+        "<button class=\"btn small\" data-act=\"refresh\" data-id=\"" + m.id + "\">Update</button>" +
+        (st === "intrade"
+          ? "<button class=\"btn small blue\" data-act=\"gotoTrades\">View trade</button>"
+          : "<button class=\"btn small primary\" data-act=\"plan\" data-id=\"" + m.id + "\"" + (st !== "eligible" || blocker ? " disabled" : "") + ">Plan trade</button>") +
+        "<button class=\"btn small ghost\" data-act=\"delMarket\" data-id=\"" + m.id + "\" aria-label=\"Delete " + esc(m.symbol) + "\">✕</button>" +
+        "</div>" +
+        (st === "locked" ? "<div class=\"lockmsg\">Volatility criteria not met — this market is locked.</div>" : "") +
+        "</div>";
+    });
+    h += "<div class=\"actions\"><button class=\"btn\" data-act=\"addMarket\" style=\"width:100%\">+ Add market</button></div>";
+    if (S.sample) h += "<div class=\"footer-note\">Showing sample markets — edit values or ✕ them and add your own. Data stays on this device.</div>";
+    return h;
+  }
+
+  /* ---------- SIZER (standalone) ---------- */
+  var sizerState = { riskPct: null, entry: null, stop: null };
+  function renderSizer() {
+    var risk = sizerState.riskPct != null ? sizerState.riskPct : S.settings.riskPct;
+    return "<h2 class=\"screen\">Bet size calculator</h2><div class=\"card\">" +
+      "<div class=\"grid3\">" +
+      "<label class=\"f\">Account $<input type=\"number\" step=\"any\" inputmode=\"decimal\" id=\"szAccount\" value=\"" + S.settings.accountSize + "\"></label>" +
+      "<label class=\"f\">Risk %<input type=\"number\" step=\"any\" inputmode=\"decimal\" id=\"szRisk\" value=\"" + risk + "\"></label>" +
+      "<label class=\"f\">Entry<input type=\"number\" step=\"any\" inputmode=\"decimal\" id=\"szEntry\" value=\"" + (sizerState.entry == null ? "" : sizerState.entry) + "\"></label>" +
+      "<label class=\"f\">Stop<input type=\"number\" step=\"any\" inputmode=\"decimal\" id=\"szStop\" value=\"" + (sizerState.stop == null ? "" : sizerState.stop) + "\"></label>" +
+      "</div><div id=\"szOut\"></div></div>" +
+      "<div class=\"footer-note\">Size is rounded down to whole units. Risk above 2% gets flagged.</div>";
+  }
+  function sizerOut(account, risk, entry, stop) {
+    var c = positionCalc(account, risk, entry, stop);
+    if (!c) return "<div class=\"calcout\"><div class=\"calcrow\"><span>Fill in all four numbers to size the bet.</span></div></div>";
+    if (c.error) return "<div class=\"err\">" + esc(c.error) + "</div>";
+    var h = "<div class=\"calcout\">" +
+      "<div class=\"calcrow\"><span>Dollar risk (" + px(risk) + "% of account)</span><b>" + money(c.riskDollars) + "</b></div>" +
+      "<div class=\"calcrow\"><span>Risk per unit (entry − stop)</span><b>" + money(c.perUnit) + "</b></div>" +
+      "<div class=\"calcrow big\"><span>Position size</span><b>" + c.size.toLocaleString() + " units</b></div>" +
+      "<div class=\"calcrow\"><span>Dollars committed</span><b>" + money(c.committed) + "</b></div>" +
+      "<div class=\"calcrow\"><span>Actual risk at this size</span><b>" + money(c.actualRisk) + "</b></div></div>";
+    if (risk > 2) h += "<div class=\"warn\">Risk is above 2% per trade. The narrator recommends against it.</div>";
+    if (c.size === 0) h += "<div class=\"err\">Stop is too far for this risk budget — position size rounds to zero. Tighten the stop or raise risk.</div>";
+    if (c.committed > account) h += "<div class=\"warn\">Committed dollars exceed the account size — this needs leverage/margin.</div>";
+    return h;
+  }
+
+  /* ---------- TRADES (active / get out) ---------- */
+  function renderTrades() {
+    var plans = openTrades();
+    var h = "<h2 class=\"screen\">Active trades — when to get out</h2>";
+    if (!plans.length) {
+      h += "<div class=\"empty\"><b>No active trades</b>When a market on the Watch screen turns eligible, plan a trade there. It will show up here with live exit narration.</div>";
+      return h;
+    }
+    plans.forEach(function (p) {
+      var m = marketById(p.marketId);
+      var sig = exitSignal(p, p.lastPrice);
+      var banner;
+      if (!sig) banner = "<div class=\"banner idle\">Enter the current price to get a call</div>";
+      else banner = "<div class=\"banner " + sig.kind + "\">" + esc(sig.label) + "<small>" + esc(sig.detail) + "</small></div>";
+      h += "<div class=\"card intrade\">" +
+        "<div class=\"rowline\"><div><span class=\"sym\">" + esc(m ? m.symbol : "?") + "</span> <span class=\"mname\">" + p.direction.toUpperCase() + " · " + p.size.toLocaleString() + " units</span></div><span class=\"badge intrade\">In trade</span></div>" +
+        "<div class=\"planmeta\">Entry <b>" + px(p.entryPrice) + "</b> Stop <b>" + px(p.stopPrice) + "</b> Target <b>" + px(p.targetPrice) + "</b> Risk <b>" + money(p.dollarRisk) + "</b></div>" +
+        "<div class=\"crit\"><h4>Profit exit</h4><p>" + esc(p.exitProfit) + "</p><h4>Stop exit</h4><p>" + esc(p.exitStop) + "</p></div>" +
+        "<div class=\"actions\">" +
+        "<input class=\"num\" style=\"flex:1;min-width:120px;margin:0\" type=\"number\" step=\"any\" inputmode=\"decimal\" placeholder=\"Current price\" value=\"" + (p.lastPrice == null ? "" : p.lastPrice) + "\" data-price-input=\"" + p.id + "\">" +
+        "<button class=\"btn small\" data-act=\"checkPrice\" data-id=\"" + p.id + "\">Check</button>" +
+        "</div>" +
+        banner +
+        "<div class=\"actions\">" +
+        (sig && sig.kind === "stop"
+          ? "<button class=\"btn danger\" style=\"width:100%\" data-act=\"exit\" data-id=\"" + p.id + "\">Exit trade now</button>"
+          : "<button class=\"btn " + (sig && sig.kind === "profit" ? "primary" : "") + "\" style=\"width:100%\" data-act=\"exit\" data-id=\"" + p.id + "\">Exit trade…</button>") +
+        "</div>" +
+        "<details><summary style=\"cursor:pointer;color:var(--muted);font-size:13px;margin-top:8px\">Narration log</summary><div class=\"log\">" +
+        p.log.map(function (e) { return "<div><time>" + hhmm(e.t) + "</time>" + esc(e.msg) + "</div>"; }).join("") +
+        "</div></details></div>";
+    });
+    return h;
+  }
+
+  /* ---------- JOURNAL ---------- */
+  function renderJournal() {
+    var ts = S.trades.slice().reverse();
+    var wins = S.trades.filter(function (t) { return t.pnl > 0; });
+    var losses = S.trades.filter(function (t) { return t.pnl < 0; });
+    var overrides = S.trades.filter(function (t) { return t.exitReason === "manual override"; });
+    var total = S.trades.reduce(function (s, t) { return s + t.pnl; }, 0);
+    var winRate = S.trades.length ? Math.round(100 * wins.length / S.trades.length) : null;
+    var avgWin = wins.length ? wins.reduce(function (s, t) { return s + t.pnl; }, 0) / wins.length : null;
+    var avgLoss = losses.length ? losses.reduce(function (s, t) { return s + t.pnl; }, 0) / losses.length : null;
+    var h = "<h2 class=\"screen\">Journal</h2><div class=\"tiles\">" +
+      "<div class=\"tile\"><div class=\"k\">Total P&L</div><div class=\"v " + (total > 0 ? "pos" : total < 0 ? "neg" : "") + "\">" + money(total) + "</div></div>" +
+      "<div class=\"tile\"><div class=\"k\">Win rate</div><div class=\"v\">" + (winRate == null ? "—" : winRate + "%") + "</div></div>" +
+      "<div class=\"tile\"><div class=\"k\">Avg win</div><div class=\"v pos\">" + money(avgWin) + "</div></div>" +
+      "<div class=\"tile\"><div class=\"k\">Avg loss</div><div class=\"v neg\">" + money(avgLoss) + "</div></div>" +
+      "<div class=\"tile override\"><div class=\"k\">Rule breaks</div><div class=\"v\">" + overrides.length + "</div></div>" +
+      "</div>";
+    if (!ts.length) {
+      h += "<div class=\"empty\"><b>No closed trades yet</b>Every exit lands here with its narration log — including the trades where you broke your own rules.</div>";
+      return h;
+    }
+    h += "<div class=\"tablewrap\"><table><thead><tr>" +
+      "<th>Closed</th><th>Market</th><th>Dir</th><th class=\"num\">Entry</th><th class=\"num\">Exit</th><th class=\"num\">P&L</th><th>Exit reason</th>" +
+      "</tr></thead><tbody>";
+    ts.forEach(function (t) {
+      h += "<tr class=\"rowbtn\" data-act=\"showLog\" data-id=\"" + t.id + "\">" +
+        "<td>" + hhmm(t.closedAt) + "</td><td>" + esc(t.symbol) + "</td><td>" + t.direction + "</td>" +
+        "<td class=\"num\">" + px(t.entryPrice) + "</td><td class=\"num\">" + px(t.exitPrice) + "</td>" +
+        "<td class=\"num\"><span class=\"" + (t.pnl >= 0 ? "pos" : "neg") + "\">" + money(t.pnl) + "</span></td>" +
+        "<td>" + (t.exitReason === "manual override" ? "<span class=\"ovr\">manual override</span>" : esc(t.exitReason)) + "</td></tr>";
+    });
+    h += "</tbody></table></div><div class=\"footer-note\">Tap a row for its narration log.</div>";
+    return h;
+  }
+
+  /* ---------- SETTINGS ---------- */
+  function renderSettings() {
+    var s = S.settings;
+    return "<h2 class=\"screen\">Settings — the rules you answer to</h2><div class=\"card\">" +
+      "<label class=\"f\">Account size ($)<input type=\"number\" step=\"any\" inputmode=\"decimal\" id=\"setAccount\" value=\"" + s.accountSize + "\"></label>" +
+      "<label class=\"f\">Default risk per trade (%)<input type=\"number\" step=\"any\" inputmode=\"decimal\" id=\"setRisk\" value=\"" + s.riskPct + "\"></label>" +
+      "<label class=\"f\">Max open trades<input type=\"number\" step=\"1\" inputmode=\"numeric\" id=\"setMaxOpen\" value=\"" + s.maxOpenTrades + "\"></label>" +
+      "<label class=\"f\">Max daily loss ($) — trading locks when hit<input type=\"number\" step=\"any\" inputmode=\"decimal\" id=\"setMaxLoss\" value=\"" + s.maxDailyLoss + "\"></label>" +
+      "<div class=\"actions\"><button class=\"btn primary\" data-act=\"saveSettings\">Save rules</button></div>" +
+      "<div id=\"setMsg\"></div></div>" +
+      "<div class=\"footer-note\">Everything is stored locally in this browser. Prices and volatility are entered by hand in v1 — the narrator judges, you report.</div>";
+  }
+
+  /* ---------- modals ---------- */
+  function closeModal() { $("#modalRoot").innerHTML = ""; }
+  function openModal(html) {
+    $("#modalRoot").innerHTML = "<div class=\"overlay\" data-act=\"overlayClose\"><div class=\"sheet\" role=\"dialog\" aria-modal=\"true\">" + html + "</div></div>";
+    bind($("#modalRoot"));
+    var first = $("#modalRoot input, #modalRoot select, #modalRoot textarea, #modalRoot button");
+    if (first) first.focus();
+  }
+
+  function addMarketModal() {
+    openModal(
+      "<h3>Add market</h3><p class=\"sub\">A market can't exist without watch criteria — define both together.</p>" +
+      "<div class=\"grid2\">" +
+      "<label class=\"f\">Symbol<input id=\"amSym\" placeholder=\"TSLA\"></label>" +
+      "<label class=\"f\">Type<select id=\"amType\"><option>stock</option><option>futures</option><option>crypto</option><option>forex</option></select></label>" +
+      "</div>" +
+      "<label class=\"f\">Name<input id=\"amName\" placeholder=\"Tesla\"></label>" +
+      "<label class=\"f\">Volatility metric<select id=\"amMetric\"><option>ATR (14)</option><option>% daily range</option><option>VIX level</option><option>IV rank</option><option>Custom</option></select></label>" +
+      "<div class=\"grid2\">" +
+      "<label class=\"f\">Must be<select id=\"amDir\"><option value=\"above\">at or above</option><option value=\"below\">at or below</option></select></label>" +
+      "<label class=\"f\">Threshold<input id=\"amThr\" type=\"number\" step=\"any\" inputmode=\"decimal\"></label>" +
+      "</div>" +
+      "<label class=\"f\">Current value (optional)<input id=\"amCur\" type=\"number\" step=\"any\" inputmode=\"decimal\"></label>" +
+      "<div id=\"amErr\"></div>" +
+      "<div class=\"actions\"><button class=\"btn primary\" data-act=\"saveMarket\">Add market</button>" +
+      "<button class=\"btn ghost\" data-act=\"closeModal\">Cancel</button></div>"
+    );
+  }
+
+  /* ---------- trade wizard ---------- */
+  var wiz = null;
+  function startWizard(marketId) {
+    var m = marketById(marketId);
+    if (!m || marketStatus(m) !== "eligible") return;
+    var blocker = tradeBlocker();
+    if (blocker) return;
+    wiz = { marketId: marketId, step: 1, entryLines: [], checked: [],
+            direction: "long", exitProfit: "", exitStop: "",
+            entry: null, stop: null, target: null, riskPct: S.settings.riskPct };
+    wizardModal();
+  }
+  function wizardModal() {
+    var m = marketById(wiz.marketId);
+    var steps = "<div class=\"steps\">" + [1, 2, 3].map(function (i) {
+      return "<span class=\"" + (wiz.step >= i ? "done" : "") + "\"></span>";
+    }).join("") + "</div>";
+    var body = "";
+    if (wiz.step === 1) {
+      body = "<p class=\"sub\">Step 1 of 3 — write your entry checklist, one condition per line. You'll have to check every one before the plan can be saved.</p>" +
+        "<label class=\"f\">Entry criteria<textarea id=\"wzEntry\" placeholder=\"Price above VWAP\nVolume 2x average\nNo news in next 30 min\">" + esc(wiz.entryLines.join("\n")) + "</textarea></label>" +
+        "<div id=\"wzErr\"></div>" +
+        "<div class=\"actions\"><button class=\"btn primary\" data-act=\"wzTo2\">Next: exit criteria</button><button class=\"btn ghost\" data-act=\"closeModal\">Cancel</button></div>";
+    } else if (wiz.step === 2) {
+      body = "<p class=\"sub\">Step 2 of 3 — decide how this trade ends before it begins.</p>" +
+        "<label class=\"f\">Direction<select id=\"wzDir\"><option value=\"long\"" + (wiz.direction === "long" ? " selected" : "") + ">Long</option><option value=\"short\"" + (wiz.direction === "short" ? " selected" : "") + ">Short</option></select></label>" +
+        "<label class=\"f\">Profit exit (in words)<textarea id=\"wzExitP\" placeholder=\"Sell at target, or if momentum stalls for 3 bars\">" + esc(wiz.exitProfit) + "</textarea></label>" +
+        "<label class=\"f\">Stop-loss exit (in words)<textarea id=\"wzExitS\" placeholder=\"Hard stop, no exceptions\">" + esc(wiz.exitStop) + "</textarea></label>" +
+        "<div class=\"grid3\">" +
+        "<label class=\"f\">Entry price<input id=\"wzPxE\" type=\"number\" step=\"any\" inputmode=\"decimal\" value=\"" + (wiz.entry == null ? "" : wiz.entry) + "\"></label>" +
+        "<label class=\"f\">Stop price<input id=\"wzPxS\" type=\"number\" step=\"any\" inputmode=\"decimal\" value=\"" + (wiz.stop == null ? "" : wiz.stop) + "\"></label>" +
+        "<label class=\"f\">Target price<input id=\"wzPxT\" type=\"number\" step=\"any\" inputmode=\"decimal\" value=\"" + (wiz.target == null ? "" : wiz.target) + "\"></label>" +
+        "</div><div id=\"wzErr\"></div>" +
+        "<div class=\"actions\"><button class=\"btn primary\" data-act=\"wzTo3\">Next: size the bet</button><button class=\"btn ghost\" data-act=\"wzBack1\">Back</button></div>";
+    } else {
+      var checks = wiz.entryLines.map(function (line, i) {
+        return "<label class=\"check\"><input type=\"checkbox\" data-check=\"" + i + "\"" + (wiz.checked[i] ? " checked" : "") + "><span>" + esc(line) + "</span></label>";
+      }).join("");
+      body = "<p class=\"sub\">Step 3 of 3 — confirm size, then check off every entry condition as true right now.</p>" +
+        "<div class=\"grid2\">" +
+        "<label class=\"f\">Risk %<input id=\"wzRisk\" type=\"number\" step=\"any\" inputmode=\"decimal\" value=\"" + wiz.riskPct + "\"></label>" +
+        "<label class=\"f\">Account $<input type=\"number\" value=\"" + S.settings.accountSize + "\" disabled></label>" +
+        "</div><div id=\"wzCalc\"></div>" +
+        "<h4 style=\"margin:16px 0 2px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)\">Entry checklist — all required</h4>" +
+        checks + "<div id=\"wzErr\"></div>" +
+        "<div class=\"actions\"><button class=\"btn primary\" data-act=\"wzCommit\">Open trade</button><button class=\"btn ghost\" data-act=\"wzBack2\">Back</button></div>";
+    }
+    openModal("<h3>Plan trade · " + esc(m.symbol) + "</h3>" + steps + body);
+    if (wiz.step === 3) updateWizCalc();
+  }
+  function updateWizCalc() {
+    var riskEl = $("#wzRisk");
+    if (riskEl) wiz.riskPct = num(riskEl.value);
+    var out = $("#wzCalc");
+    if (out) out.innerHTML = sizerOut(S.settings.accountSize, wiz.riskPct, wiz.entry, wiz.stop);
+  }
+
+  function wizardValidateStep2() {
+    wiz.direction = $("#wzDir").value;
+    wiz.exitProfit = $("#wzExitP").value.trim();
+    wiz.exitStop = $("#wzExitS").value.trim();
+    wiz.entry = num($("#wzPxE").value);
+    wiz.stop = num($("#wzPxS").value);
+    wiz.target = num($("#wzPxT").value);
+    if (!wiz.exitStop) return "Write the stop-loss exit — a trade without a stop doesn't get planned here.";
+    if (wiz.entry == null || wiz.stop == null || wiz.target == null) return "Entry, stop, and target prices are all required.";
+    if (wiz.direction === "long" && !(wiz.stop < wiz.entry && wiz.entry < wiz.target))
+      return "For a long: stop must be below entry, target above entry.";
+    if (wiz.direction === "short" && !(wiz.target < wiz.entry && wiz.entry < wiz.stop))
+      return "For a short: target must be below entry, stop above entry.";
+    return null;
+  }
+
+  function commitWizard() {
+    var errEl = $("#wzErr");
+    if (!wiz.checked.every(Boolean) || !wiz.entryLines.length) {
+      errEl.innerHTML = "<div class=\"err\">Every entry condition must be checked. If one isn't true, you don't have a trade.</div>";
+      return;
+    }
+    var c = positionCalc(S.settings.accountSize, wiz.riskPct, wiz.entry, wiz.stop);
+    if (!c || c.error || c.size === 0) {
+      errEl.innerHTML = "<div class=\"err\">Position size is zero or invalid — fix risk % or the stop distance.</div>";
+      return;
+    }
+    var blocker = tradeBlocker();
+    var m = marketById(wiz.marketId);
+    if (blocker || !m || marketStatus(m) !== "eligible") {
+      errEl.innerHTML = "<div class=\"err\">" + esc(blocker || "Market is no longer eligible.") + "</div>";
+      return;
+    }
+    var plan = {
+      id: uid(), marketId: m.id, symbol: m.symbol, direction: wiz.direction,
+      entryCriteria: wiz.entryLines.slice(), exitProfit: wiz.exitProfit, exitStop: wiz.exitStop,
+      entryPrice: wiz.entry, stopPrice: wiz.stop, targetPrice: wiz.target,
+      riskPct: wiz.riskPct, size: c.size, dollarRisk: c.actualRisk, committed: c.committed,
+      status: "ACTIVE", lastPrice: null, openedAt: nowIso(), log: []
+    };
+    narrate(plan, m.symbol + " eligible: " + m.watch.metric + " " + px(m.watch.currentValue) + " vs " + px(m.watch.threshold));
+    narrate(plan, "Plan created: " + plan.direction + " " + c.size + " units @ " + px(plan.entryPrice) + ", stop " + px(plan.stopPrice) + ", target " + px(plan.targetPrice) + ", risking " + money(c.actualRisk));
+    narrate(plan, "Entry checklist confirmed (" + plan.entryCriteria.length + "/" + plan.entryCriteria.length + "). Trade opened.");
+    S.plans.push(plan);
+    wiz = null; closeModal(); tab = "trades"; render();
+  }
+
+  /* ---------- exit flow ---------- */
+  function exitModal(planId) {
+    var p = S.plans.find(function (x) { return x.id === planId; });
+    if (!p) return;
+    var sig = exitSignal(p, p.lastPrice);
+    var isStop = sig && sig.kind === "stop";
+    var reasonAuto = sig ? (sig.kind === "stop" ? "stop hit" : sig.kind === "profit" ? "target hit" : "manual override") : "manual override";
+    /* One tap on STOP: no confirmation sheet — exit immediately at last price */
+    if (isStop && p.lastPrice != null) { doExit(p, p.lastPrice, "stop hit"); return; }
+    openModal(
+      "<h3>Exit " + esc(p.symbol) + "</h3>" +
+      (reasonAuto === "manual override"
+        ? "<div class=\"warn\">No exit signal is active. Leaving now gets recorded as a <b>manual override</b> — a rule break in your journal.</div>"
+        : "<p class=\"sub\">Signal: " + esc(sig.label) + "</p>") +
+      "<label class=\"f\">Actual exit price<input id=\"exPx\" type=\"number\" step=\"any\" inputmode=\"decimal\" value=\"" + (p.lastPrice == null ? "" : p.lastPrice) + "\"></label>" +
+      "<div id=\"exErr\"></div>" +
+      "<div class=\"actions\"><button class=\"btn " + (reasonAuto === "target hit" ? "primary" : "danger") + "\" data-act=\"exConfirm\" data-id=\"" + p.id + "\" data-reason=\"" + reasonAuto + "\">Record exit</button>" +
+      "<button class=\"btn ghost\" data-act=\"closeModal\">Stay in</button></div>"
+    );
+  }
+  function doExit(p, exitPrice, reason) {
+    var dir = p.direction === "long" ? 1 : -1;
+    var pnl = (exitPrice - p.entryPrice) * dir * p.size;
+    narrate(p, "Exit signal: " + reason + " at " + px(exitPrice));
+    narrate(p, "Trade closed. P&L " + money(pnl) + ".");
+    p.status = "CLOSED";
+    S.trades.push({
+      id: uid(), planId: p.id, symbol: p.symbol, direction: p.direction,
+      entryPrice: p.entryPrice, exitPrice: exitPrice, size: p.size,
+      pnl: Math.round(pnl * 100) / 100, exitReason: reason,
+      openedAt: p.openedAt, closedAt: nowIso(), log: p.log.slice()
+    });
+    /* Market returns to WATCHING and must re-qualify: stale its reading */
+    var m = marketById(p.marketId);
+    if (m) { m.watch.currentValue = null; m.watch.lastChecked = null; }
+    closeModal(); tab = "journal"; render();
+  }
+
+  function showLogModal(tradeId) {
+    var t = S.trades.find(function (x) { return x.id === tradeId; });
+    if (!t) return;
+    openModal(
+      "<h3>" + esc(t.symbol) + " · " + t.direction + " · " + money(t.pnl) + "</h3>" +
+      "<p class=\"sub\">" + hhmm(t.openedAt) + " → " + hhmm(t.closedAt) + " · exit: " + esc(t.exitReason) + "</p>" +
+      "<div class=\"log\">" + t.log.map(function (e) { return "<div><time>" + hhmm(e.t) + "</time>" + esc(e.msg) + "</div>"; }).join("") + "</div>" +
+      "<div class=\"actions\"><button class=\"btn ghost\" data-act=\"closeModal\">Close</button></div>"
+    );
+  }
+
+  /* ---------- event wiring ---------- */
+  function bind(root) {
+    root.querySelectorAll("[data-act]").forEach(function (el) {
+      el.addEventListener("click", function (ev) {
+        var act = el.dataset.act, id = el.dataset.id;
+        if (act === "overlayClose") { if (ev.target === el) closeModal(); return; }
+        if (act === "closeModal") { wiz = null; closeModal(); return; }
+        if (act === "addMarket") { addMarketModal(); return; }
+        if (act === "gotoTrades") { tab = "trades"; render(); return; }
+        if (act === "saveMarket") {
+          var sym = $("#amSym").value.trim(), thr = num($("#amThr").value);
+          if (!sym || thr == null) { $("#amErr").innerHTML = "<div class=\"err\">Symbol and threshold are required — the watch criteria are the whole point.</div>"; return; }
+          var mm = mkMarket(sym.toUpperCase(), $("#amName").value.trim() || sym, $("#amType").value, $("#amMetric").value, $("#amDir").value, thr, num($("#amCur").value));
+          S.markets.push(mm); S.sample = false; closeModal(); render(); return;
+        }
+        if (act === "delMarket") {
+          var mk = marketById(id);
+          if (activePlan(id)) return;
+          if (mk && confirm("Remove " + mk.symbol + " from the watchlist?")) {
+            S.markets = S.markets.filter(function (m) { return m.id !== id; }); render();
+          } return;
+        }
+        if (act === "refresh") {
+          var inp = $("[data-refresh-input=\"" + id + "\"]"), v = num(inp && inp.value);
+          if (v == null) return;
+          var m = marketById(id);
+          m.watch.currentValue = v; m.watch.lastChecked = nowIso();
+          render(); return;
+        }
+        if (act === "plan") { startWizard(id); return; }
+        if (act === "wzTo2") {
+          wiz.entryLines = $("#wzEntry").value.split("\n").map(function (s) { return s.trim(); }).filter(Boolean);
+          if (!wiz.entryLines.length) { $("#wzErr").innerHTML = "<div class=\"err\">Write at least one entry condition.</div>"; return; }
+          wiz.checked = wiz.entryLines.map(function () { return false; });
+          wiz.step = 2; wizardModal(); return;
+        }
+        if (act === "wzBack1") { wiz.step = 1; wizardModal(); return; }
+        if (act === "wzTo3") {
+          var e2 = wizardValidateStep2();
+          if (e2) { $("#wzErr").innerHTML = "<div class=\"err\">" + esc(e2) + "</div>"; return; }
+          wiz.step = 3; wizardModal(); return;
+        }
+        if (act === "wzBack2") { wiz.step = 2; wizardModal(); return; }
+        if (act === "wzCommit") { commitWizard(); return; }
+        if (act === "checkPrice") {
+          var pin = $("[data-price-input=\"" + id + "\"]"), pv = num(pin && pin.value);
+          var pl = S.plans.find(function (x) { return x.id === id; });
+          if (pl && pv != null) {
+            pl.lastPrice = pv;
+            var sg = exitSignal(pl, pv);
+            narrate(pl, "Price check " + px(pv) + " → " + sg.label);
+            render();
+          } return;
+        }
+        if (act === "exit") { exitModal(id); return; }
+        if (act === "exConfirm") {
+          var p2 = S.plans.find(function (x) { return x.id === id; });
+          var xp = num($("#exPx").value);
+          if (xp == null) { $("#exErr").innerHTML = "<div class=\"err\">Enter the actual exit price.</div>"; return; }
+          doExit(p2, xp, el.dataset.reason); return;
+        }
+        if (act === "showLog") { showLogModal(id); return; }
+        if (act === "saveSettings") {
+          var a = num($("#setAccount").value), r = num($("#setRisk").value),
+              mo = num($("#setMaxOpen").value), ml = num($("#setMaxLoss").value);
+          if ([a, r, mo, ml].some(function (v) { return v == null || v <= 0; })) {
+            $("#setMsg").innerHTML = "<div class=\"err\">All four rules need a positive number.</div>"; return;
+          }
+          S.settings = { accountSize: a, riskPct: r, maxOpenTrades: Math.floor(mo), maxDailyLoss: ml };
+          save();
+          $("#setMsg").innerHTML = "<div class=\"warn\" style=\"border-color:rgba(63,223,140,.4);color:var(--green);background:var(--green-dim)\">Rules saved.</div>";
+          return;
+        }
+      });
+    });
+    /* live inputs */
+    ["szAccount", "szRisk", "szEntry", "szStop"].forEach(function (idn) {
+      var el = $("#" + idn, root);
+      if (el) el.addEventListener("input", function () {
+        sizerState.riskPct = num($("#szRisk").value);
+        sizerState.entry = num($("#szEntry").value);
+        sizerState.stop = num($("#szStop").value);
+        $("#szOut").innerHTML = sizerOut(num($("#szAccount").value), sizerState.riskPct, sizerState.entry, sizerState.stop);
+      });
+    });
+    var wr = $("#wzRisk", root);
+    if (wr) wr.addEventListener("input", updateWizCalc);
+    root.querySelectorAll("[data-check]").forEach(function (cb) {
+      cb.addEventListener("change", function () { wiz.checked[Number(cb.dataset.check)] = cb.checked; });
+    });
+  }
+
+  document.addEventListener("keydown", function (e) {
+    if (e.key === "Escape") { wiz = null; closeModal(); }
+  });
+
+  /* initial paint (also seeds the sizer output) */
+  render();
+  if (tab === "sizer") $("#szOut").innerHTML = sizerOut(S.settings.accountSize, S.settings.riskPct, null, null);
+})();
+</script>
+</html>
