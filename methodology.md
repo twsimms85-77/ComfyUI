@@ -2,7 +2,7 @@
 
 ## Overview
 Each cycle produces a single directional call on CLX (Clorox Co., NYSE) over the next
-5 trading days, logged to `clxpredictionlog.csv`. The card reports the call, its
+5 trading days, logged to `clx-prediction-log.csv`. The card reports the call, its
 probability, and the running hit rate and Brier score over all resolved prior calls.
 
 ## Model
