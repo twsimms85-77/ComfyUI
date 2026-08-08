@@ -63,6 +63,12 @@ python ~/.claude/skills/fed-tax-pulse/scripts/fetch_fed_tax.py --check
 
 Expect two `OK` lines. The Federal Register half is an official, stable, documented JSON API and should be solid. The IRB half is an HTML parse — the IRS publishes no JSON API for the Bulletin — so it is the fragile one by design. If it reports `reachable but nothing parsed`, the page layout moved; the digest degrades to Federal Register only rather than failing, and the regexes in `fetch_fed_tax.py` need a touch-up.
 
+If you want to confirm the code itself is sound before trusting a live run, the offline suite stubs the HTTP transport and exercises the parsers, the JSON contract, watermark filtering, sort order, partial-failure handling, and the `--check` exit codes — everything except the socket:
+
+```
+python ~/.claude/skills/fed-tax-pulse/tests/test_fetch_offline.py
+```
+
 Then do a live dry run with no watermark, which prints to stdout and writes nothing:
 
 ```
