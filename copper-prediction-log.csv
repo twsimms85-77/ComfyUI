@@ -1,0 +1,2 @@
+cycle_date,ref_close_date,ref_close,horizon_end_date,call,p_up,median_target,band_lo,band_hi,resolved,actual_close,hit,brier,notes
+2026-08-14,2026-08-13,6.6070,2026-08-20,DOWN,0.332,6.5217,6.2701,6.7732,0,,,,"bootstrap cycle; HG front-month (Sep-26) $/lb; settles reconstructed via WebSearch; record-rally regime (ATH 6.703 settle Aug 5; Indonesia smelter outage, LME squeeze); Aug 7/10 magnitudes implied, excluded from magnitude est"

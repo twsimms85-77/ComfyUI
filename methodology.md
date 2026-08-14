@@ -45,3 +45,26 @@ snippet reconstruction when available.
   is ~flat and does not move the transition estimates materially.
 - Earnings sessions Aug 3–4 were excluded from magnitude estimation but retained in the
   transition counts.
+- Resolved 2026-08-14: Aug 13 close $106.54, +0.70% over the horizon → hit (call was UP,
+  p=0.567), Brier (0.567 − 1)² = 0.1875. Running: 1/1, Brier 0.1875.
+
+## Copper futures variant (`copper-prediction-log.csv`)
+Same model applied to **COMEX copper futures, front month (HG)**, quoted in $/lb, using
+daily settlement prices. Differences from the CLX setup:
+- No earnings exclusion; instead, days whose settle had to be *implied* rather than found
+  (direction inferred from context, magnitude estimated) are retained in transition counts
+  but **excluded from magnitude estimation**.
+- Per-day noise σ = 1.0% (copper runs hotter than CLX's 0.8%).
+- Resolution uses the front-month settle 5 trading days after the reference settle. Note
+  the front month can roll inside a horizon; score against the same contract's settle
+  where snippets allow, otherwise the continuous front-month quote, and record which.
+
+### 2026-08-14 bootstrap notes
+- Reconstructed settles: Aug 4 ≈ 6.617 (implied), Aug 5 6.703 (record, +1.3%),
+  Aug 6 ≈ 6.58 (ATH near 6.90 intraday then profit-taking), Aug 7 ≈ 6.55 (direction
+  inferred: TE described Aug 10–12 as a three-session rising streak, so Friday was not
+  an up day), Aug 10 ≈ 6.60, Aug 11 6.61, Aug 12 6.6335, Aug 13 ≈ 6.607 (CPER −0.42%).
+- Regime: record rally (tariff-driven hoarding, LME squeeze, Indonesia smelter outage,
+  tame US CPI Aug 12). Transition counts came out perfectly balanced after shrinkage
+  (P(U|U) = P(U|D) = 0.50), so the DOWN call is driven by return asymmetry: observed
+  down days (−1.8%, −0.4%) outweigh non-record up days.

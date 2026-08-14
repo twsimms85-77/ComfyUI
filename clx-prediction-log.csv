@@ -1,2 +1,2 @@
 cycle_date,ref_close_date,ref_close,horizon_end_date,call,p_up,median_target,band_lo,band_hi,resolved,actual_close,hit,brier,notes
-2026-08-07,2026-08-06,105.80,2026-08-13,UP,0.567,106.31,102.34,109.87,0,,,,bootstrap cycle; closes reconstructed via WebSearch (egress-blocked env); post-earnings regime (Q4 FY26 beat Aug 3); earnings moves excluded from magnitude est
+2026-08-07,2026-08-06,105.80,2026-08-13,UP,0.567,106.31,102.34,109.87,1,106.54,1,0.1875,bootstrap cycle; closes reconstructed via WebSearch (egress-blocked env); post-earnings regime (Q4 FY26 beat Aug 3); earnings moves excluded from magnitude est; resolved 2026-08-14: Aug13 close 106.54 (+0.70% over horizon)
