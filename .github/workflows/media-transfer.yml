@@ -1,0 +1,45 @@
+name: media-transfer
+on:
+  workflow_dispatch:
+    inputs:
+      url:
+        description: 'Signed source URL of the media zip'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download zip and push contents to a media branch
+        env:
+          SRC_URL: ${{ inputs.url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          curl -sSL --retry 3 -o media.zip "$SRC_URL"
+          ls -la media.zip
+          file media.zip
+          mkdir -p extracted
+          unzip -o media.zip -d extracted
+          find extracted -type f | head -50
+          mkdir -p /tmp/mediarepo/clips
+          # flatten: copy every video file with a safe sequential name, keep a manifest of originals
+          i=0
+          find extracted -type f \( -iname '*.mp4' -o -iname '*.mov' -o -iname '*.webm' \) | sort | while read -r f; do
+            i=$((i+1))
+            n=$(printf 'clip-%02d.mp4' "$i")
+            cp "$f" "/tmp/mediarepo/clips/$n"
+            printf '%s\t%s\n' "$n" "$(basename "$f")" >> /tmp/mediarepo/clips/manifest.tsv
+          done
+          ls -la /tmp/mediarepo/clips
+          cd /tmp/mediarepo
+          git init -b claude/dreamina-media-transfer
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Transfer dreamina media for clip sequencing"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" HEAD:claude/dreamina-media-transfer
