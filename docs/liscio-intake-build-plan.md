@@ -40,8 +40,19 @@ The design doc says what the system is. This says how it gets built, in order, w
 
 *This is the real build month. Owner: Tyler with Claude; Lyndsey loads.*
 
+> **Revision (Aug 2026):** Liscio's **Smart Tax Organizers** feature replaces most of the
+> 1040-side checklist work. The flow: bulk print organizer PDFs from ProSeries (standard
+> PDF, per Liscio's ProSeries article) → drag-drop into Liscio's Smart Tax page in batches
+> of ~100 → organizers parse into interactive in-platform organizers, auto-assigned by
+> matching the taxpayer/spouse email → Bulk Send with a due date; auto-reminders chase.
+> **Sequence: contacts (with emails) load first, then organizer import, then templates.**
+> The Request templates below now cover only the gaps: entities, new clients (no PY
+> organizer), and add-on nuances (corrected-1099 holds, business sales). The checklist
+> generator shrinks from load-bearing artifact to gap-filler for those same cases.
+
 1. **Load the client list** into Liscio (Contacts + Accounts, using the multi-entity convention from Phase 0). Link Liscio accounts to SmartVault accounts (Account Linking) once, up front.
-2. **Build the five Request templates** — the load-bearing artifact:
+2. **Import and send Smart Tax Organizers** from ProSeries (see revision note above) — this can start as soon as contacts are loaded; it does not need to wait for November.
+3. **Build the remaining Request templates** for what organizers don't cover:
    - Base 1040
    - + Schedule C add-on
    - + Rental add-on
