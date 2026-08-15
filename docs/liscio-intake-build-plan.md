@@ -40,19 +40,35 @@ The design doc says what the system is. This says how it gets built, in order, w
 
 *This is the real build month. Owner: Tyler with Claude; Lyndsey loads.*
 
-> **Revision (Aug 2026):** Liscio's **Smart Tax Organizers** feature replaces most of the
-> 1040-side checklist work. The flow: bulk print organizer PDFs from ProSeries (standard
-> PDF, per Liscio's ProSeries article) → drag-drop into Liscio's Smart Tax page in batches
-> of ~100 → organizers parse into interactive in-platform organizers, auto-assigned by
-> matching the taxpayer/spouse email → Bulk Send with a due date; auto-reminders chase.
-> **Sequence: contacts (with emails) load first, then organizer import, then templates.**
-> The Request templates below now cover only the gaps: entities, new clients (no PY
-> organizer), and add-on nuances (corrected-1099 holds, business sales). The checklist
-> generator shrinks from load-bearing artifact to gap-filler for those same cases.
+> **Revision 2 (Aug 2026):** Liscio's **Smart Tax Organizers** (bulk-printed from
+> ProSeries, imported to the Smart Tax page, auto-assigned by email) are one *instrument*
+> in the January send — not a replacement for the checklist strategy, and nothing is
+> sent before January. Rules:
+>
+> 1. **Segment the book first** — one instrument per lane, not one organizer for all:
+>    - *Simple 1040s* (W-2 / retiree): short Request checklist. An organizer here is
+>      friction that lowers response rates.
+>    - *Complex 1040s* (Sch C/E/F, brokerage): Smart Organizer — its upload-based
+>      C/E/F sections are the personalized checklist in organizer form.
+>    - *Entities*: Entity Request template (organizers are 1040-only).
+>    - *New clients*: onboarding Request template (no PY data exists).
+> 2. **Print in two waves, after the pilot passes:** filed clients can print any time
+>    from October; extension clients only after their 2025 return is final (post
+>    Oct 15). Never print an organizer from a non-final return.
+> 3. **Stage ≠ send.** Import and assign in the fall to verify the email auto-match
+>    rate while there's time to fix contacts; the send is one coordinated January
+>    event (with the engagement letter, due date ~Feb 15, reminders on).
+> 4. **Pilot before bulk:** 5–10 organizers through the full path (print → import →
+>    assign → send-to-self → complete → export) as part of the Phase 0 trial, before
+>    any bulk printing.
+>
+> Templates are built **in parallel with staging (Oct–Nov)**, not after — the simple-1040
+> lane needs its Request template for the same January send. The checklist generator's
+> scope: item lists for the simple-1040 Requests and entity/new-client gaps.
 
 1. **Load the client list** into Liscio (Contacts + Accounts, using the multi-entity convention from Phase 0). Link Liscio accounts to SmartVault accounts (Account Linking) once, up front.
-2. **Import and send Smart Tax Organizers** from ProSeries (see revision note above) — this can start as soon as contacts are loaded; it does not need to wait for November.
-3. **Build the remaining Request templates** for what organizers don't cover:
+2. **Segment, print, stage organizers** per the revision-2 rules above.
+3. **Build the Request templates** for the non-organizer lanes:
    - Base 1040
    - + Schedule C add-on
    - + Rental add-on
