@@ -1,45 +1,41 @@
 name: media-transfer
 on:
-  workflow_dispatch:
-    inputs:
-      url:
-        description: 'Signed source URL of the media zip'
-        required: true
+  push:
+    branches:
+      - claude/dreamina-clip-sequencing-3ycnkx
+    paths:
+      - media-url.txt
+      - .github/workflows/media-transfer.yml
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
-      - name: Download zip and push contents to a media branch
-        env:
-          SRC_URL: ${{ inputs.url }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
+      - uses: actions/checkout@v4
+      - name: Download zip and stage clips
         run: |
           set -euo pipefail
+          SRC_URL="$(cat media-url.txt)"
           curl -sSL --retry 3 -o media.zip "$SRC_URL"
           ls -la media.zip
           file media.zip
-          mkdir -p extracted
+          mkdir -p extracted clips
           unzip -o media.zip -d extracted
-          find extracted -type f | head -50
-          mkdir -p /tmp/mediarepo/clips
-          # flatten: copy every video file with a safe sequential name, keep a manifest of originals
+          find extracted -type f | head -60
           i=0
           find extracted -type f \( -iname '*.mp4' -o -iname '*.mov' -o -iname '*.webm' \) | sort | while read -r f; do
             i=$((i+1))
             n=$(printf 'clip-%02d.mp4' "$i")
-            cp "$f" "/tmp/mediarepo/clips/$n"
-            printf '%s\t%s\n' "$n" "$(basename "$f")" >> /tmp/mediarepo/clips/manifest.tsv
+            cp "$f" "clips/$n"
+            printf '%s\t%s\n' "$n" "$(basename "$f")" >> clips/manifest.tsv
           done
-          ls -la /tmp/mediarepo/clips
-          cd /tmp/mediarepo
-          git init -b claude/dreamina-media-transfer
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git commit -m "Transfer dreamina media for clip sequencing"
-          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" HEAD:claude/dreamina-media-transfer
+          ls -la clips
+          cat clips/manifest.tsv || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dreamina-clips
+          path: clips/
+          retention-days: 2
