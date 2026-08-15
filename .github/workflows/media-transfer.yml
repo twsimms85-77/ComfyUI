@@ -32,7 +32,9 @@ jobs:
           openssl pkeyutl -encrypt -pubin -inkey transfer-pub.pem -in sym.key -out key.enc
           sha256sum media.zip payload.enc > checksums.txt
           mkdir /tmp/transfer
-          mv payload.enc key.enc checksums.txt /tmp/transfer/
+          split -b 90m payload.enc /tmp/transfer/payload.enc.part-
+          rm payload.enc
+          mv key.enc checksums.txt /tmp/transfer/
           cd /tmp/transfer
           git init -b claude/dreamina-media-transfer
           git config user.name "github-actions[bot]"
