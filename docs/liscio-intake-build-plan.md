@@ -66,7 +66,7 @@ The design doc says what the system is. This says how it gets built, in order, w
 > lane needs its Request template for the same January send. The checklist generator's
 > scope: item lists for the simple-1040 Requests and entity/new-client gaps.
 
-1. **Load the client list** into Liscio (Contacts + Accounts, using the multi-entity convention from Phase 0). Link Liscio accounts to SmartVault accounts (Account Linking) once, up front.
+1. **Load the client list** into Liscio (Contacts + Accounts, using the multi-entity convention from Phase 0). Link Liscio accounts to SmartVault accounts (Account Linking) once, up front. Add the **paper-preference flag** (see "Clients Who Won't Use the App" below) to every contact who needs it — known now, cheapest to set during this load.
 2. **Segment, print, stage organizers** per the revision-2 rules above.
 3. **Build the Request templates** for the non-organizer lanes:
    - Base 1040
@@ -77,6 +77,27 @@ The design doc says what the system is. This says how it gets built, in order, w
    - Draft each from two representative prior-year returns; include conditional questions for the judgment gaps ("Sell any property this year?" → follow-ups).
 3. **Build the checklist generator** (the one piece of software): Claude reads a prior-year return PDF → outputs that client's tailored item list, formatted to paste into a Liscio Request built on the right template. Build it, run it on 10 clients, have Tyler spot-check against his mental model — then run the full list in batches.
 4. **Template the engagement letter** for e-sign delivery alongside the January Request.
+
+## Clients Who Won't Use the App
+
+They're already in the design — design doc §6.6: "the client who won't use the portal → the paper channel exists precisely for them; no shame lane." But this deserves a fuller answer, because the older-client cohort is probably 20–30% of a 560-return book, and how you handle them decides whether the system feels humane or hostile.
+
+The principle: **the client-facing surface can stay paper; the tracking never leaves Liscio.** These clients don't use the app — *Lyndsey uses it for them.* Liscio doesn't care who checks the boxes.
+
+How each piece works for them:
+
+- **January send:** they get the same engagement letter and checklist by mail — printed on paper, in a real envelope. For the complex ones, ProSeries prints the paper organizer like it always has. Same content as everyone else, different delivery.
+- **Documents in:** they do what they've always done — the shoebox drop-off. Kids scan on the Sharp, upload to the client's Liscio account, and Lyndsey marks the items received on their staged Request/organizer. From the system's point of view, this client is indistinguishable from an app user. That's the whole trick.
+- **Reminders:** app notifications become a phone call. Lyndsey's chase list comes from the same Liscio progress dashboard — she filters to open items, and the paper-preference clients get a friendly call instead of a push notification. Same engine, human last mile.
+- **Signatures:** pen on the paper engagement letter, scanned in. KBA e-sign is for those who can handle it, not a gate.
+- **One genuine surprise:** don't write off texting. Plenty of clients who will never touch a portal will happily text a photo of a W-2 to the firm's number — and Liscio's two-way texting lands that photo on their client record. For a lot of 70-somethings, texting *is* the app. Offer it in the January letter as "or just text it to us at this number."
+
+Two implementation details:
+
+1. **Flag them, don't guess.** Add a "paper preference" marker during the contact load (you know exactly who they are). It crosses the four lanes — a paper-preference complex 1040 gets a mailed paper organizer; a paper-preference simple 1040 gets a mailed one-page checklist. The flag also tells Lyndsey which chase is a call versus an automated nudge.
+2. **Let migration happen, never force it.** Some will move to texting after one season, a few to the portal, most won't move at all — and it doesn't matter, because the marginal cost of a paper client in this system is one scan and a check-off. The system was designed with a paper mouth from day one; these clients just use it exclusively.
+
+The reframe worth holding onto: the point of the intake system was never "get clients onto an app." It was "one landing zone, one checklist, someone other than you chasing it." Paper clients get all three — they just get them with Lyndsey as their interface instead of a phone.
 
 ## Phase 3 — Dry Run & Training (December)
 
@@ -89,8 +110,8 @@ The design doc says what the system is. This says how it gets built, in order, w
 
 ## Phase 4 — Launch (first week of January 2027)
 
-1. **Bulk send** engagement letters + personalized Requests through Liscio.
-2. Auto-reminders on. Answers start flowing weeks before the drop-off-first model would produce anything.
+1. **Bulk send** engagement letters + personalized Requests through Liscio. Paper-preference clients get the same content mailed instead ("Clients Who Won't Use the App").
+2. Auto-reminders on for app/portal clients; Lyndsey's call list for paper-preference clients comes off the same Liscio progress dashboard. Answers start flowing weeks before the drop-off-first model would produce anything.
 3. From here the system is in *operate* mode: the design doc's §5 flow and §6 exception queues are the daily runbook, and the status board runs the day.
 
 ## April 16–30 — The Compounding Step
