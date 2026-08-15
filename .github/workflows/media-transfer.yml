@@ -5,37 +5,38 @@ on:
       - claude/dreamina-clip-sequencing-3ycnkx
     paths:
       - media-url.txt
+      - transfer-pub.pem
       - .github/workflows/media-transfer.yml
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   fetch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download zip and stage clips
+      - name: Download, encrypt, and push to transfer branch
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           SRC_URL="$(cat media-url.txt)"
           curl -sSL --retry 3 -o media.zip "$SRC_URL"
           ls -la media.zip
           file media.zip
-          mkdir -p extracted clips
-          unzip -o media.zip -d extracted
-          find extracted -type f | head -60
-          i=0
-          find extracted -type f \( -iname '*.mp4' -o -iname '*.mov' -o -iname '*.webm' \) | sort | while read -r f; do
-            i=$((i+1))
-            n=$(printf 'clip-%02d.mp4' "$i")
-            cp "$f" "clips/$n"
-            printf '%s\t%s\n' "$n" "$(basename "$f")" >> clips/manifest.tsv
-          done
-          ls -la clips
-          cat clips/manifest.tsv || true
-      - uses: actions/upload-artifact@v4
-        with:
-          name: dreamina-clips
-          path: clips/
-          retention-days: 2
+          # encrypt payload so it is never publicly readable in the repo
+          openssl rand 32 > sym.key
+          openssl enc -aes-256-cbc -pbkdf2 -in media.zip -out payload.enc -pass file:sym.key
+          openssl pkeyutl -encrypt -pubin -inkey transfer-pub.pem -in sym.key -out key.enc
+          sha256sum media.zip payload.enc > checksums.txt
+          mkdir /tmp/transfer
+          mv payload.enc key.enc checksums.txt /tmp/transfer/
+          cd /tmp/transfer
+          git init -b claude/dreamina-media-transfer
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Encrypted media transfer payload"
+          git push -f "https://x-access-token:${GH_TOKEN}@github.com/${REPO}.git" HEAD:claude/dreamina-media-transfer
