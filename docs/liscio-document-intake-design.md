@@ -4,6 +4,8 @@
 
 This design turns the two prior planning documents — *QUAESTOR: Liscio as Document Hub (Plan v1)* and the *Tax Season Workflow Redesign Plan* (Aug 9, 2026) — into a concrete intake system, where every component maps to a feature that actually exists in Liscio's user documentation. Nothing below depends on an unverified integration.
 
+> **⚠️ Correction (Aug 2026):** an earlier version of this document stated who scans paper and who owns Requests as settled fact. Both are confirmed **not decided**. Everywhere below that names "Kids" or "Lyndsey" for a task, read it as an illustrative placeholder for a role that has no owner yet — not a staffing decision. The mechanics (what Liscio does, what a Request is, how the reminder cadence works) are grounded in Liscio's documentation and are solid. The *who* is not, and shouldn't be treated as decided until Tyler says so.
+
 ---
 
 ## 1. Design Goal
@@ -12,7 +14,7 @@ One sentence: **every client document, regardless of how it arrives, lands in on
 
 Constraints carried forward from the prior plans:
 
-- ~560 returns, ~220 concurrent in season; solo owner + Ilene (prep) + Lyndsey (admin) + kids (scanning).
+- ~560 returns, ~220 concurrent in season; solo owner + Ilene (prep) + Lyndsey (admin). **Who scans paper and who runs day-to-day Request monitoring are open staffing questions — not decided.**
 - Liscio is the client-facing front door; SmartVault stays the system of record; the Liscio→SmartVault bridge is **manual** (verified — no auto-sync, no confirmed Zapier).
 - Two intake mouths only: everything electronic arrives in Liscio, everything paper arrives through the Sharp copier.
 
@@ -25,7 +27,7 @@ Constraints carried forward from the prior plans:
 | Portal upload | Client uploads against a Request or to Files | Requests; Uploading Files |
 | Mobile photo | Client scans with phone; auto-crop, light adjustment, PDF conversion | Mobile app Document Scanner |
 | Email attachment | Captured and linked to the client's Contact/Account | Outlook 365 / Gmail Email Integration |
-| Paper drop-off | Kids scan on Sharp ("Tax Intake" preset: 300 dpi, PDF, duplex) → staff uploads to the client's account | Uploading Files (firm side) |
+| Paper drop-off | *Staff (owner TBD)* scans on Sharp ("Tax Intake" preset: 300 dpi, PDF, duplex) → uploads to the client's account | Uploading Files (firm side) |
 | Text message | Client texts a photo; staff moves it onto the client record | Liscio texting |
 
 **Rule: no third mouth.** Documents handed to Tyler personally, mailed in, or emailed to a personal address get scanned/forwarded into one of the five channels above the same day. The system only works if the exceptions route into it.
@@ -44,7 +46,7 @@ The core insight from the redesign plan — "last year's return predicts this ye
 - **Conditional questions** handle the judgment gaps ("Did you sell property this year?" → follow-up items appear only if yes).
 - **Automatic reminders** do the chasing. Nobody manually nags.
 - **Bulk send** delivers the January wave (engagement letter + checklist) across the whole client list.
-- Request status (open items vs. complete) *is* the completeness review — visible to Lyndsey, not resident in Tyler's head.
+- Request status (open items vs. complete) *is* the completeness review — visible to whoever monitors it, not resident in Tyler's head. Who that is day-to-day is still an open staffing question.
 
 **Files + Tags + Month/Year = the organization layer.**
 - Firm Admin defines the tag taxonomy once (see §4).
@@ -98,11 +100,11 @@ reminders on)           → exceptions → Needs-Filing queue    → Tyler revie
                                                              → status: Ready
 ```
 
-Division of labor (unchanged from Plan v1, now with sharper edges):
+Division of labor — **not decided; the roles below are placeholders showing what the work looks like, not who does it**:
 
-- **Kids**: scan paper → upload to the client's Liscio account, apply tags.
-- **Lyndsey**: owns Requests (send, monitor, check off), the Needs-Filing queue, and the export-to-SmartVault step on Request completion.
-- **Ilene**: works only from complete, GruntWorx-processed stacks; verifies instead of keying.
+- *Paper scanning* (owner TBD): scan → upload to the client's Liscio account, apply tags.
+- *Request/queue ownership* (owner TBD — Lyndsey is one candidate given her admin role, not confirmed): monitor Requests, the Needs-Filing queue, and the export-to-SmartVault step.
+- **Ilene**: works only from complete, GruntWorx-processed stacks; verifies instead of keying. (This one traces to the existing Aug 9 plan.)
 - **Tyler**: judgment gaps, review, business/sale complexity. Pulled in by the system, not by default.
 
 ---
@@ -111,8 +113,8 @@ Division of labor (unchanged from Plan v1, now with sharper edges):
 
 Every intake system fails at its edges. These are named queues, not ad-hoc decisions:
 
-1. **Unmatched sender / unknown email** → Liscio's create-Contact-from-email if it's a real client; otherwise a `Needs-Filing` Task assigned to Lyndsey. Never auto-guess the account.
-2. **Password-protected PDFs** → `Needs-Filing` Task; Lyndsey requests the password via Liscio message (not email).
+1. **Unmatched sender / unknown email** → Liscio's create-Contact-from-email if it's a real client; otherwise a `Needs-Filing` Task assigned to whoever owns intake admin. Never auto-guess the account.
+2. **Password-protected PDFs** → `Needs-Filing` Task; admin requests the password via Liscio message (not email).
 3. **Wrong-client uploads** (spouse uploads to their own contact, business doc on personal account) → weekly recurring Task: sweep Files filtered by recent uploads with no Request match.
 4. **Corrected/amended documents** (corrected 1099s, late K-1s) → the new version is uploaded *alongside* the original, tagged, and the filename gets `-CORR` suffix. The Request item is re-opened, which flips the return status back from Ready if needed. Never delete the original — that's the audit trail.
 5. **Duplicates** (client uploads the same W-2 three ways) → keep first, archive the rest (Liscio Active/Archived toggle). Never hard-delete client uploads.
@@ -123,12 +125,13 @@ Every intake system fails at its edges. These are named queues, not ad-hoc decis
 
 ## 7. 🔒 Security Flags
 
-- **Access scope**: kids scanning paper should have the narrowest Liscio role available — upload to accounts, no browsing of other clients' documents, no export rights. Verify Liscio's role granularity during the trial; if it can't restrict this, the kids scan to the Sharp folder and *Lyndsey* uploads.
+- **Who handles client PII needs to be a real decision, not an inherited assumption.** An earlier draft assumed "kids" (unconfirmed whether staff or literal minors) would scan client documents containing SSNs and financial data. That's a real question worth answering directly — if it means minors, that's a data-handling and possibly liability question to settle before it's built into any workflow, not a configuration detail.
+- **Access scope**: whoever scans paper should have the narrowest Liscio role available — upload to accounts, no browsing of other clients' documents, no export rights. Verify Liscio's role granularity during the trial.
 - **MFA** on every Liscio user and every mailbox in the capture path. Non-negotiable.
 - **WISP update**: add Liscio, the email-capture channel, and the export-to-SmartVault step to the written security plan (FTC Safeguards Rule / IRS Pub 4557). The intake map in §2 *is* the data-flow diagram the WISP needs.
 - **Client steering**: the January letter directs clients away from plain email toward the portal/app — the biggest exposure is documents clients email unencrypted, and only client behavior fixes it.
 - **Export ZIPs land on a workstation** between Liscio and SmartVault. Define the landing folder, encrypt the drive, and clear the folder after filing — don't let a shadow archive of client SSNs accumulate in Downloads.
-- **Off-boarding**: seasonal helpers (kids) get accounts deactivated at season end. Calendar it now.
+- **Off-boarding**: any seasonal or part-time helper gets Liscio access deactivated at season end. Applies once staffing is actually decided.
 
 ---
 
