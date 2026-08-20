@@ -25,7 +25,7 @@ Five tests. A play worth building passes at least three. Use these to evaluate a
 
 1. **Ceiling test** — does it break hours-for-dollars, or just widen the pipe? Breaking the ceiling beats widening it every time. Only one play below (productized knowledge) actually breaks it; that is why it ranks higher than its effort suggests.
 2. **Inertia test** — does it work *with* the Enneagram 9 pattern instead of against it? Anything requiring him to initiate cold, repeatedly, will die in week three. Anything that converts a decision into a veto, or makes the default state productive, survives.
-3. **Reuse test** — does it assemble things he already built (skills, vault, digest, Perplexity Light graph) rather than requiring net-new invention? Assembly ships; invention stalls.
+3. **Reuse test** — does it assemble things he already built (skills, notes store, digest, Perplexity Light graph) rather than requiring net-new invention? Assembly ships; invention stalls.
 4. **Compounding test** — does the output become an input to future work? A play that deepens the corpus or tightens the library beats one that produces a one-time artifact.
 5. **Cold-decision test** — does it force a hard call at a moment when it is emotionally cheap (November, not February; before the fee is quoted, not after)? Timing is most of the leverage on the practice-management plays.
 
@@ -41,11 +41,11 @@ A scheduled agent that converts each open decision into "unless you veto by 4pm,
 - **Done looks like:** He has vetoed at least one thing and let at least three through unedited.
 
 ### 2. Call capture — voice memo after every client call
-Three minutes of rambling into the phone, transcribed, then an agent extracts billable time, action items, open questions, and the client's own framing, and files it to the vault with links.
+Three minutes of rambling into the phone, transcribed, then an agent extracts billable time, action items, open questions, and the client's own framing, and files it to the notes store with links.
 
-- **Why his:** The biggest leak in a solo shop is unbilled time and dropped follow-ups, not research speed. Recovering four unbilled hours a month pays for a decade of tokens. He has the vault and the pipeline chops; he just hasn't pointed them at the boring thing.
+- **Why his:** The biggest leak in a solo shop is unbilled time and dropped follow-ups, not research speed. Recovering four unbilled hours a month pays for a decade of tokens. He has the notes store and the pipeline chops; he just hasn't pointed them at the boring thing.
 - **First move:** Wire transcription → a single structured note format. Do not build the whole pipeline; do one call end to end.
-- **Build steps:** (a) capture path (phone memo → watched folder or email-in); (b) transcription; (c) extraction prompt with a fixed schema — client, minutes, actions, questions, quotes; (d) vault write with client backlinks; (e) weekly rollup of uncaptured time.
+- **Build steps:** (a) capture path (phone memo → watched folder or email-in); (b) transcription; (c) extraction prompt with a fixed schema — client, minutes, actions, questions, quotes; (d) write to the notes store with client backlinks; (e) weekly rollup of uncaptured time.
 - **Effort/payoff:** 1-2 sessions / direct revenue recovery, measurable in month one.
 - **Done looks like:** A week of calls where every one produced a note without him opening a laptop.
 
@@ -73,7 +73,7 @@ Cross-reference each new opinion against the actual client roster and positions 
 
 - **Why his:** Best ROI upgrade to something already built and already running daily. Same job, but the output becomes retention and billable conversations instead of awareness.
 - **First move:** Build the client-position index — a table of client × issues × positions taken. That's the missing input, not the matching logic.
-- **Build steps:** (a) client-position index in the vault; (b) matching pass added to tax-court-daily-digest after scoring; (c) draft email per match, one paragraph, plain English, no fee ask; (d) route through the default-holder (play 1) so silence sends nothing but a veto is one word; (e) track which sends produce replies.
+- **Build steps:** (a) client-position index in the notes store; (b) matching pass added to tax-court-daily-digest after scoring; (c) draft email per match, one paragraph, plain English, no fee ask; (d) route through the default-holder (play 1) so silence sends nothing but a veto is one word; (e) track which sends produce replies.
 - **Effort/payoff:** 1-2 sessions / directly revenue-generating.
 - **Done looks like:** One client replies "thanks for thinking of me" — that's the whole product.
 
@@ -128,13 +128,17 @@ Not "let them use ChatGPT for homework." Sit down and build a real skill for som
 
 **Brand pipeline (ComfyUI).** A locked workflow JSON plus fixed seed and LoRA gives 52 weeks of visually identical tax-explainer graphics at near-zero marginal cost. Pair with `graphic-designer` to fix the palette once. A CPA with genuinely consistent visual output is a rounding error away from nonexistent.
 
-**Annual pattern read.** Feed a year of vault notes to `whats-underneath` longitudinally instead of in-the-moment, and ask what he kept circling and never resolved. 9s systematically under-register their own preferences in real time but leave the evidence in writing. This is the one thing he cannot do for himself.
+**Annual pattern read.** Feed a year of notes to `whats-underneath` longitudinally instead of in-the-moment, and ask what he kept circling and never resolved. 9s systematically under-register their own preferences in real time but leave the evidence in writing. This is the one thing he cannot do for himself.
 
 ## Recommended sequence
 
 Play 1 first — it changes the odds on everything after it. Then 8 (cheap, protective, and will otherwise never happen). Then 5 and 4, both one-session upgrades to things already running. Then 6 → 7 as a pair, timed to land before November. Play 3 when there's a real block of time. Play 9 runs in the background at low intensity, permanently. Play 10 on a weekend, not a workday.
 
 Never run more than two in-flight at once. Two half-built pipelines is the characteristic failure mode here, and it looks like progress right up until neither ships.
+
+## Storage
+
+This skill hardcodes **no paths**. "Notes store" means wherever Tyler's notes actually live at the time of reading — resolve it at runtime by asking or by reading the configured location, never by assuming a path from another skill. Do not copy a path out of an older skill into a new one; several in the library still carry a stale absolute path and are being corrected separately.
 
 ## Status ledger
 
