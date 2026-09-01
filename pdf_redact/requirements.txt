@@ -1,0 +1,11 @@
+# Core requirement. Does the actual glyph removal.
+pymupdf>=1.24
+
+# Optional but strongly recommended: adds a text layer to scanned PDFs so they
+# can be scanned for patterns at all. Also needs the `tesseract` binary:
+#   macOS:  brew install tesseract ghostscript
+#   Debian: apt install tesseract-ocr ghostscript
+# ocrmypdf>=16.0
+
+# For the test suite only.
+# pytest>=7.0
