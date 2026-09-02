@@ -1,0 +1,356 @@
+<title>Three Pillars Log</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;1,500&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap">
+<style>
+  :root{
+    --ground:#F3F2EE; --surface:#FFFFFF; --line:#D6D3CB; --line-strong:#9EA3AB;
+    --ink:#1C1F24; --ink-2:#4A5563; --ink-3:#7A818C;
+    --accent:#B8662A; --accent-soft:#F4E5D8;
+    --long:#2E7D5B; --long-soft:#DCEFE6; --short:#B23A3A; --short-soft:#F3DCDC;
+    --off:#E9E7E1;
+    --display:'Playfair Display',Georgia,'Times New Roman',serif;
+    --body:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+    --mono:'DM Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ground:#17191D; --surface:#1F2227; --line:#31353C; --line-strong:#4A505A;
+      --ink:#ECE9E2; --ink-2:#B8BCC4; --ink-3:#7F8590;
+      --accent:#D8853F; --accent-soft:#3A2A1C;
+      --long:#5FBF93; --long-soft:#1D3A2E; --short:#E06A6A; --short-soft:#3E2323;
+      --off:#2A2E34;
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#17191D; --surface:#1F2227; --line:#31353C; --line-strong:#4A505A;
+    --ink:#ECE9E2; --ink-2:#B8BCC4; --ink-3:#7F8590;
+    --accent:#D8853F; --accent-soft:#3A2A1C;
+    --long:#5FBF93; --long-soft:#1D3A2E; --short:#E06A6A; --short-soft:#3E2323;
+    --off:#2A2E34;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .wrap{max-width:1180px;margin:0 auto;padding:28px 24px 64px}
+  header{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:28px;flex-wrap:wrap}
+  h1{font-family:var(--display);font-weight:500;font-size:34px;margin:0;letter-spacing:-.01em;text-wrap:balance}
+  h1 em{font-style:italic;color:var(--accent)}
+  .tag{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin:0 0 4px}
+  .motto{font-family:var(--display);font-style:italic;color:var(--ink-2);font-size:15px;margin:0}
+  .grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:32px;align-items:start}
+  @media (max-width:900px){.grid{grid-template-columns:1fr}}
+  h2{font-family:var(--display);font-weight:500;font-size:20px;margin:0 0 12px}
+  .row{display:grid;gap:12px}
+  .row.c2{grid-template-columns:1fr 1fr}
+  .row.c3{grid-template-columns:1fr 1fr 1fr}
+  @media (max-width:520px){.row.c3{grid-template-columns:1fr}}
+  label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  input,select,textarea{background:var(--surface);border:1px solid var(--line);border-radius:3px;padding:8px 10px;font-size:15px;letter-spacing:0;text-transform:none;color:var(--ink);width:100%}
+  input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  textarea{min-height:52px;resize:vertical}
+  input[type=number]{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .pillars{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:20px 0}
+  @media (max-width:720px){.pillars{grid-template-columns:1fr}}
+  .pillar{background:var(--surface);border-top:3px solid var(--line-strong);padding:14px 14px 12px;display:flex;flex-direction:column;gap:10px;transition:border-color .2s}
+  .pillar.long{border-top-color:var(--long)} .pillar.short{border-top-color:var(--short)}
+  .pillar .n{font-family:var(--display);font-size:17px;margin:0}
+  .pillar .q{font-size:13px;color:var(--ink-2);margin:0;min-height:40px}
+  .opts{display:flex;flex-direction:column;gap:6px}
+  .opt{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:3px;padding:7px 10px;cursor:pointer;background:var(--ground);font-size:13.5px}
+  .opt input{width:auto;margin:0;accent-color:var(--accent)}
+  .opt.sel-short{border-color:var(--short);background:var(--short-soft)}
+  .opt.sel-long{border-color:var(--long);background:var(--long-soft)}
+  .opt.sel-off{border-color:var(--line-strong);background:var(--off)}
+  .verdict{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 16px;border:1px solid var(--line);background:var(--surface);margin:4px 0 20px;flex-wrap:wrap}
+  .verdict.short{border-color:var(--short);background:var(--short-soft)}
+  .verdict.long{border-color:var(--long);background:var(--long-soft)}
+  .verdict .v{font-family:var(--display);font-size:22px;margin:0}
+  .verdict .why{font-size:13px;color:var(--ink-2);margin:0}
+  .risk{background:var(--surface);border:1px solid var(--line);padding:14px 16px;margin-bottom:20px}
+  .risk .out{display:flex;gap:28px;margin-top:12px;flex-wrap:wrap}
+  .risk .out div{display:flex;flex-direction:column}
+  .risk .out b{font-family:var(--mono);font-weight:500;font-size:20px;font-variant-numeric:tabular-nums}
+  .risk .out span{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3)}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .btn{border:1px solid var(--ink);background:var(--ink);color:var(--ground);padding:10px 18px;border-radius:3px;cursor:pointer;font-weight:500;letter-spacing:.02em}
+  .btn.ghost{background:transparent;color:var(--ink);border-color:var(--line-strong)}
+  .btn:hover{opacity:.9}
+  .hint{font-size:12.5px;color:var(--ink-3)}
+  /* log */
+  .log{display:flex;flex-direction:column;gap:10px}
+  .entry{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--line-strong);padding:12px 14px;display:grid;grid-template-columns:1fr auto;gap:6px 12px}
+  .entry.long{border-left-color:var(--long)} .entry.short{border-left-color:var(--short)}
+  .entry .t{font-family:var(--display);font-size:18px;margin:0;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  .entry .d{font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+  .dir{font-size:11px;letter-spacing:.1em;text-transform:uppercase;padding:2px 8px;border-radius:2px;font-weight:600}
+  .dir.long{background:var(--long-soft);color:var(--long)} .dir.short{background:var(--short-soft);color:var(--short)} .dir.watch{background:var(--off);color:var(--ink-2)}
+  .chips{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap}
+  .chip{font-size:12px;padding:3px 9px;border-radius:2px;border:1px solid var(--line);color:var(--ink-2);background:var(--ground)}
+  .chip.long{border-color:var(--long);color:var(--long)} .chip.short{border-color:var(--short);color:var(--short)}
+  .entry .note{grid-column:1/-1;font-size:13.5px;color:var(--ink-2);margin:0;white-space:pre-wrap}
+  .entry .meta{grid-column:1/-1;font-family:var(--mono);font-size:12px;color:var(--ink-3);display:flex;gap:16px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+  .entry .tools{display:flex;gap:8px;align-self:start}
+  .entry .tools button{background:none;border:none;color:var(--ink-3);cursor:pointer;font-size:12px;padding:2px 4px;text-decoration:underline}
+  .entry .tools button:hover{color:var(--accent)}
+  .empty{color:var(--ink-3);font-style:italic;font-family:var(--display);padding:20px 0}
+  .example{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);padding:1px 6px;border-radius:2px}
+  .stats{display:flex;gap:22px;margin:0 0 14px;font-size:13px;color:var(--ink-2)}
+  .stats b{font-family:var(--mono);font-weight:500;color:var(--ink);font-variant-numeric:tabular-nums}
+  footer{margin-top:44px;border-top:1px solid var(--line);padding-top:12px;font-size:12.5px;color:var(--ink-3);max-width:68ch}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header>
+    <div>
+      <p class="tag">Jason Shapiro · Contrarian setup log</p>
+      <h1>Three Pillars <em>Log</em></h1>
+    </div>
+    <p class="motto">Don't trade. Fade. — but only when all three say so.</p>
+  </header>
+
+  <div class="grid">
+    <section>
+      <h2>New setup</h2>
+      <form id="f" autocomplete="off">
+        <div class="row c3">
+          <label class="f">Market / ticker <input id="ticker" placeholder="ES, CL, GC, AAPL…" required></label>
+          <label class="f">Date <input id="date" type="date"></label>
+          <label class="f">Status
+            <select id="status"><option>Watching</option><option>Live</option><option>Closed</option></select>
+          </label>
+        </div>
+
+        <div class="pillars">
+          <div class="pillar" id="p-pos">
+            <p class="n">1 · Positioning</p>
+            <p class="q">Are speculators at an extreme in the COT report? Large specs crowded on one side means the crowd is already in.</p>
+            <div class="opts" data-key="pos">
+              <label class="opt"><input type="radio" name="pos" value="short">Crowded long — specs at an extreme long</label>
+              <label class="opt"><input type="radio" name="pos" value="long">Crowded short — specs at an extreme short</label>
+              <label class="opt"><input type="radio" name="pos" value="off" checked>Not at an extreme</label>
+            </div>
+            <textarea id="posNote" placeholder="COT note: net spec position, percentile, weeks at extreme…"></textarea>
+          </div>
+
+          <div class="pillar" id="p-sent">
+            <p class="n">2 · Sentiment</p>
+            <p class="q">Is the consensus one-sided? Surveys, headlines, the narrative everyone agrees on. Everyone bullish means no one left to buy.</p>
+            <div class="opts" data-key="sent">
+              <label class="opt"><input type="radio" name="sent" value="short">Extreme bullish consensus</label>
+              <label class="opt"><input type="radio" name="sent" value="long">Extreme bearish consensus</label>
+              <label class="opt"><input type="radio" name="sent" value="off" checked>Mixed / no extreme</label>
+            </div>
+            <textarea id="sentNote" placeholder="Sentiment note: survey readings, headline, narrative…"></textarea>
+          </div>
+
+          <div class="pillar" id="p-act">
+            <p class="n">3 · Market Action</p>
+            <p class="q">The news failure. Confirming news arrives and price refuses to follow. Tops on bullish news, bottoms on bearish news.</p>
+            <div class="opts" data-key="act">
+              <label class="opt"><input type="radio" name="act" value="short">Bullish news came out, price fell</label>
+              <label class="opt"><input type="radio" name="act" value="long">Bearish news came out, price rose</label>
+              <label class="opt"><input type="radio" name="act" value="off" checked>No news failure yet</label>
+            </div>
+            <textarea id="actNote" placeholder="Action note: what the news was, what price did, reversal bar/level…"></textarea>
+          </div>
+        </div>
+
+        <div class="verdict" id="verdict">
+          <p class="v" id="vText">No setup yet</p>
+          <p class="why" id="vWhy">All three pillars must point the same way. Two out of three is a watch, not a trade.</p>
+        </div>
+
+        <div class="risk">
+          <h2 style="font-size:17px">Risk first</h2>
+          <p class="hint" style="margin:0 0 10px">Shapiro sizes every position from entry and stop. Know the dollar loss before you enter.</p>
+          <div class="row c3">
+            <label class="f">Entry <input id="entry" type="number" step="any" placeholder="0.00"></label>
+            <label class="f">Stop <input id="stop" type="number" step="any" placeholder="0.00"></label>
+            <label class="f">Max loss $ <input id="riskUsd" type="number" step="any" placeholder="500"></label>
+          </div>
+          <div class="out">
+            <div><b id="oDist">—</b><span>Stop distance</span></div>
+            <div><b id="oSize">—</b><span>Units / shares</span></div>
+            <div><b id="oPct">—</b><span>Stop % of entry</span></div>
+          </div>
+        </div>
+
+        <label class="f" style="margin-bottom:14px">Thesis (one line) <textarea id="note" placeholder="What is the crowd sure of, and what will hurt them?"></textarea></label>
+
+        <div class="actions">
+          <button class="btn" type="submit" id="saveBtn">Log setup</button>
+          <button class="btn ghost" type="button" id="clearBtn">Clear form</button>
+          <span class="hint" id="editHint"></span>
+        </div>
+      </form>
+    </section>
+
+    <section>
+      <h2>Log</h2>
+      <div class="stats">
+        <span>Setups <b id="sCount">0</b></span>
+        <span>Qualified <b id="sQual">0</b></span>
+        <span>Live <b id="sLive">0</b></span>
+      </div>
+      <div class="log" id="log"></div>
+      <div class="actions" style="margin-top:16px">
+        <button class="btn ghost" type="button" id="exportBtn">Copy log as JSON</button>
+        <button class="btn ghost" type="button" id="importBtn">Paste JSON to import</button>
+        <span class="hint">Saved in this browser only.</span>
+      </div>
+    </section>
+  </div>
+
+  <footer>
+    Positioning from the weekly CFTC Commitments of Traders report. Sentiment from consensus, surveys and headlines. Market action is the news failure: the market fails to move on news that should have moved it. Three aligned pillars qualify a fade against the crowd, sized from a fixed risk.
+  </footer>
+</div>
+
+<script>
+(function(){
+  const KEY='shapiro-three-pillars-v1';
+  const $=id=>document.getElementById(id);
+  const P={pos:'Positioning',sent:'Sentiment',act:'Market action'};
+  const LABEL={
+    pos:{short:'Crowded long',long:'Crowded short',off:'No extreme'},
+    sent:{short:'Extreme bullish',long:'Extreme bearish',off:'Mixed'},
+    act:{short:'Bullish news, price fell',long:'Bearish news, price rose',off:'No failure yet'}
+  };
+  let entries=[], editId=null;
+
+  function load(){
+    try{ const raw=localStorage.getItem(KEY); if(raw) entries=JSON.parse(raw); }catch(e){ entries=[]; }
+    if(!entries.length){
+      entries=[
+        {id:'ex1',example:true,ticker:'CL (Crude)',date:'2026-08-21',status:'Watching',pos:'short',sent:'short',act:'off',
+         posNote:'Large specs net long at 2-year high',sentNote:'Every headline: supply shock, $100 oil',actNote:'Waiting for a bullish inventory draw that fails to lift price',
+         entry:'',stop:'',riskUsd:'',note:'Crowd is sure oil only goes up. Two of three, watch only.'},
+        {id:'ex2',example:true,ticker:'ES (S&P)',date:'2026-08-14',status:'Live',pos:'long',sent:'long',act:'long',
+         posNote:'Specs net short, lowest since 2022',sentNote:'AAII bears above 50%, recession on every cover',actNote:'Hot CPI print Thursday, market gapped down then closed green',
+         entry:'5810',stop:'5740',riskUsd:'1400',note:'Bad news could not push it lower. Everyone who wanted to sell has sold.'}
+      ];
+    }
+  }
+  function save(){ try{ localStorage.setItem(KEY,JSON.stringify(entries)); }catch(e){} }
+
+  function radio(name){ const r=document.querySelector(`input[name=${name}]:checked`); return r?r.value:'off'; }
+  function setRadio(name,val){ const r=document.querySelector(`input[name=${name}][value=${val}]`); if(r) r.checked=true; }
+
+  function bias(e){
+    const v=[e.pos,e.sent,e.act];
+    if(v.every(x=>x==='short')) return 'short';
+    if(v.every(x=>x==='long')) return 'long';
+    return null;
+  }
+
+  function paintPillars(){
+    for(const k of Object.keys(P)){
+      const val=radio(k);
+      const card=$('p-'+(k==='pos'?'pos':k==='sent'?'sent':'act'));
+      card.classList.remove('long','short'); if(val!=='off') card.classList.add(val);
+      document.querySelectorAll(`.opts[data-key=${k}] .opt`).forEach(o=>{
+        const inp=o.querySelector('input');
+        o.classList.remove('sel-long','sel-short','sel-off');
+        if(inp.checked) o.classList.add('sel-'+inp.value);
+      });
+    }
+    const e={pos:radio('pos'),sent:radio('sent'),act:radio('act')};
+    const b=bias(e); const v=$('verdict'); v.classList.remove('long','short');
+    const lit=Object.values(e).filter(x=>x!=='off').length;
+    const shorts=Object.values(e).filter(x=>x==='short').length, longs=Object.values(e).filter(x=>x==='long').length;
+    if(b){ v.classList.add(b); $('vText').textContent=(b==='short'?'Short':'Long')+' qualifies'; $('vWhy').textContent='All three pillars agree. Fade the crowd, size from the stop.'; }
+    else if(shorts&&longs){ $('vText').textContent='Conflict'; $('vWhy').textContent='Pillars point opposite ways. That is noise, not a setup.'; }
+    else if(lit===2){ const d=shorts?'short':'long'; $('vText').textContent='Two of three · watch '+d; $('vWhy').textContent='Waiting on '+Object.keys(e).filter(k=>e[k]==='off').map(k=>P[k].toLowerCase()).join(', ')+'. No trade until it confirms.'; }
+    else if(lit===1){ $('vText').textContent='One pillar'; $('vWhy').textContent='Interesting, not actionable.'; }
+    else { $('vText').textContent='No setup yet'; $('vWhy').textContent='All three pillars must point the same way. Two out of three is a watch, not a trade.'; }
+  }
+
+  function paintRisk(){
+    const en=parseFloat($('entry').value), st=parseFloat($('stop').value), r=parseFloat($('riskUsd').value);
+    const dist=(isFinite(en)&&isFinite(st))?Math.abs(en-st):NaN;
+    $('oDist').textContent=isFinite(dist)?dist.toLocaleString(undefined,{maximumFractionDigits:4}):'—';
+    $('oSize').textContent=(isFinite(dist)&&dist>0&&isFinite(r))?Math.floor(r/dist).toLocaleString():'—';
+    $('oPct').textContent=(isFinite(dist)&&en)?(dist/en*100).toFixed(2)+'%':'—';
+  }
+
+  function read(){
+    return {id:editId||('t'+Date.now()),ticker:$('ticker').value.trim(),date:$('date').value,status:$('status').value,
+      pos:radio('pos'),sent:radio('sent'),act:radio('act'),
+      posNote:$('posNote').value.trim(),sentNote:$('sentNote').value.trim(),actNote:$('actNote').value.trim(),
+      entry:$('entry').value,stop:$('stop').value,riskUsd:$('riskUsd').value,note:$('note').value.trim()};
+  }
+  function fill(e){
+    $('ticker').value=e.ticker||''; $('date').value=e.date||''; $('status').value=e.status||'Watching';
+    setRadio('pos',e.pos||'off'); setRadio('sent',e.sent||'off'); setRadio('act',e.act||'off');
+    $('posNote').value=e.posNote||''; $('sentNote').value=e.sentNote||''; $('actNote').value=e.actNote||'';
+    $('entry').value=e.entry||''; $('stop').value=e.stop||''; $('riskUsd').value=e.riskUsd||''; $('note').value=e.note||'';
+    paintPillars(); paintRisk();
+  }
+  function reset(){
+    editId=null; $('f').reset(); $('date').value=new Date().toISOString().slice(0,10);
+    $('saveBtn').textContent='Log setup'; $('editHint').textContent='';
+    paintPillars(); paintRisk();
+  }
+
+  function esc(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+  function render(){
+    const log=$('log'); log.innerHTML='';
+    const sorted=[...entries].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    $('sCount').textContent=entries.length;
+    $('sQual').textContent=entries.filter(e=>bias(e)).length;
+    $('sLive').textContent=entries.filter(e=>e.status==='Live').length;
+    if(!sorted.length){ log.innerHTML='<p class="empty">Nothing logged yet.</p>'; return; }
+    for(const e of sorted){
+      const b=bias(e); const d=document.createElement('div');
+      d.className='entry'+(b?' '+b:'');
+      const dirLbl=b?(b==='short'?'Short':'Long'):'Watch';
+      const chips=Object.keys(P).map(k=>`<span class="chip ${e[k]!=='off'?e[k]:''}" title="${esc(e[k+'Note'])}">${P[k]}: ${LABEL[k][e[k]||'off']}</span>`).join('');
+      const en=parseFloat(e.entry),st=parseFloat(e.stop),r=parseFloat(e.riskUsd);
+      const dist=(isFinite(en)&&isFinite(st))?Math.abs(en-st):NaN;
+      const meta=[];
+      if(isFinite(en)) meta.push('entry '+en); if(isFinite(st)) meta.push('stop '+st);
+      if(isFinite(r)) meta.push('risk $'+r.toLocaleString());
+      if(isFinite(dist)&&dist>0&&isFinite(r)) meta.push('size '+Math.floor(r/dist).toLocaleString());
+      d.innerHTML=`
+        <p class="t">${esc(e.ticker)} <span class="dir ${b||'watch'}">${dirLbl}</span> <span class="d">${esc(e.date)} · ${esc(e.status)}</span> ${e.example?'<span class="example">example</span>':''}</p>
+        <div class="tools"><button data-a="edit" data-id="${e.id}">edit</button><button data-a="del" data-id="${e.id}">delete</button></div>
+        <div class="chips">${chips}</div>
+        ${e.note?`<p class="note">${esc(e.note)}</p>`:''}
+        ${meta.length?`<div class="meta">${meta.map(esc).join('<span>·</span>')}</div>`:''}`;
+      log.appendChild(d);
+    }
+  }
+
+  $('log').addEventListener('click',ev=>{
+    const btn=ev.target.closest('button'); if(!btn) return;
+    const id=btn.dataset.id, e=entries.find(x=>x.id===id); if(!e) return;
+    if(btn.dataset.a==='del'){ if(confirm('Delete '+e.ticker+' setup?')){ entries=entries.filter(x=>x.id!==id); save(); render(); } }
+    else { editId=id; fill(e); $('saveBtn').textContent='Save changes'; $('editHint').textContent='Editing '+e.ticker; window.scrollTo({top:0,behavior:'smooth'}); }
+  });
+  $('f').addEventListener('submit',ev=>{
+    ev.preventDefault(); const e=read(); if(!e.ticker) return;
+    entries=entries.filter(x=>!x.example); // first real entry replaces the examples
+    const i=entries.findIndex(x=>x.id===e.id);
+    if(i>=0) entries[i]=e; else entries.unshift(e);
+    save(); render(); reset();
+  });
+  $('clearBtn').addEventListener('click',reset);
+  document.querySelectorAll('input[type=radio]').forEach(r=>r.addEventListener('change',paintPillars));
+  ['entry','stop','riskUsd'].forEach(id=>$(id).addEventListener('input',paintRisk));
+  $('exportBtn').addEventListener('click',async()=>{
+    const txt=JSON.stringify(entries.filter(x=>!x.example),null,2);
+    try{ await navigator.clipboard.writeText(txt); $('exportBtn').textContent='Copied'; setTimeout(()=>$('exportBtn').textContent='Copy log as JSON',1500); }
+    catch(e){ prompt('Copy this:',txt); }
+  });
+  $('importBtn').addEventListener('click',()=>{
+    const txt=prompt('Paste JSON exported from this log:'); if(!txt) return;
+    try{ const arr=JSON.parse(txt); if(!Array.isArray(arr)) throw 0;
+      const ids=new Set(entries.map(x=>x.id)); entries=entries.filter(x=>!x.example);
+      for(const e of arr){ if(e&&e.id&&!ids.has(e.id)) entries.push(e); }
+      save(); render(); }
+    catch(e){ alert('That did not look like a log export.'); }
+  });
+
+  load(); render(); reset();
+})();
+</script>
