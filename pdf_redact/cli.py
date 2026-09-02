@@ -104,6 +104,8 @@ def _render_report(results: List[FileResult], args: argparse.Namespace) -> str:
 
         if result.form_fields_cleared:
             lines.append(f"  {'form field values cleared':<28} {result.form_fields_cleared:>4}")
+        if result.annotations_scrubbed:
+            lines.append(f"  {'annotation values scrubbed':<28} {result.annotations_scrubbed:>4}")
 
         if result.matches:
             lines.append("")
@@ -123,13 +125,31 @@ def _render_report(results: List[FileResult], args: argparse.Namespace) -> str:
                 lines.append(f"VERIFY: ERROR - {verification['error']}")
             elif verification["passed"]:
                 lines.append(
-                    f"VERIFY: PASS - {verification['checked_values']} value(s) confirmed "
-                    "unrecoverable from the output"
+                    f"VERIFY: PASS - {verification['checked_values']} redacted value(s) "
+                    "confirmed unrecoverable"
                 )
+                if verification.get("rescanned"):
+                    lines.append(
+                        "        and a fresh scan of the output (page text, annotations,"
+                    )
+                    lines.append(
+                        "        form fields) found no remaining pattern matches."
+                    )
             else:
-                lines.append("VERIFY: FAIL - values still recoverable from the output:")
+                lines.append("VERIFY: FAIL")
                 for leak in verification["leaks"]:
-                    lines.append(f"  {leak['value']}  via {', '.join(leak['channels'])}")
+                    lines.append(
+                        f"  still recoverable: {leak['value']}  via {', '.join(leak['channels'])}"
+                    )
+                for hit in verification.get("residual", []):
+                    lines.append(
+                        f"  still present:     {hit['value']}  ({hit['pattern']}) in {hit['where']}"
+                    )
+            if verification.get("truncated_scan"):
+                lines.append(
+                    "  NOTE: file is very large; the raw object sweep examined only the "
+                    "first 20000 objects"
+                )
             if not verification.get("metadata_clean", True):
                 lines.append(
                     "  NOTE: metadata still present: "
@@ -156,6 +176,7 @@ def _json_report(results: List[FileResult], args: argparse.Namespace) -> dict:
                 "ocr_applied": r.ocr_applied,
                 "image_pages": r.image_pages,
                 "form_fields_cleared": r.form_fields_cleared,
+                "annotations_scrubbed": r.annotations_scrubbed,
                 "counts": r.counts_by_pattern(),
                 "matches": [
                     {"page": m.page, "pattern": m.pattern, "masked": m.masked}
@@ -330,6 +351,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 result.output,
                 [m.text for m in result.matches],
                 deep=not args.fast_verify,
+                patterns=selected,
             )
 
         results.append(result)

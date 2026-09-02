@@ -72,6 +72,7 @@ class FileResult:
     image_pages: List[int] = field(default_factory=list)
     ocr_applied: bool = False
     form_fields_cleared: int = 0
+    annotations_scrubbed: int = 0
     page_count: int = 0
     verification: Optional[dict] = None
 
@@ -179,6 +180,88 @@ def find_matches(page: pymupdf.Page, patterns: Sequence[Pattern], page_number: i
                 continue
             claimed.append((start, end))
             found.append(Match(page=page_number, pattern=pattern.name, text=value, rects=rects))
+    return found
+
+
+def _scrub_annotations(
+    page: pymupdf.Page, patterns: Sequence[Pattern], page_number: int
+) -> List[Match]:
+    """Redact sensitive text carried by annotations.
+
+    Comments, sticky notes, callouts and stamps store their text in the
+    annotation dictionary, not the page content stream, so removing the page
+    glyphs does not touch them. A reviewer note reading "confirm client SSN
+    123-45-6789" survives an otherwise perfect redaction, and because nothing
+    on the page matched, the run reports a clean pass. That combination - a
+    real leak plus an all-clear - is the worst outcome this tool can produce,
+    so annotations are scanned as a first-class source of text.
+    """
+    found: List[Match] = []
+    try:
+        annots = list(page.annots())
+    except Exception:
+        return found
+
+    for annot in annots:
+        try:
+            if annot.type[0] == pymupdf.PDF_ANNOT_REDACT:
+                continue
+        except Exception:
+            pass
+
+        info = annot.info or {}
+        updated = dict(info)
+        changed = False
+
+        for key in ("content", "title", "subject"):
+            original = info.get(key) or ""
+            if not original.strip():
+                continue
+            replaced = original
+
+            for pattern in patterns:
+                def _replace(match, _pattern=pattern):
+                    group = _pattern.group
+                    if group and group > (match.re.groups or 0):
+                        return match.group(0)
+                    value = match.group(group) if group else match.group(0)
+                    if not value:
+                        return match.group(0)
+                    if _pattern.validator is not None and not _pattern.validator(value):
+                        return match.group(0)
+                    found.append(
+                        Match(
+                            page=page_number,
+                            pattern=f"{_pattern.name} (annotation)",
+                            text=value,
+                            rects=[],
+                        )
+                    )
+                    return match.group(0).replace(value, "[REDACTED]")
+
+                replaced = pattern.regex.sub(_replace, replaced)
+
+            if replaced != original:
+                updated[key] = replaced
+                changed = True
+
+        if not changed:
+            continue
+
+        try:
+            annot.set_info(updated)
+            # Rich text (/RC) holds a second, separately encoded copy of the
+            # comment body; leaving it behind would undo the scrub.
+            page.parent.xref_set_key(annot.xref, "RC", "null")
+            annot.update()
+        except Exception:
+            # If the annotation cannot be rewritten safely, drop it entirely
+            # rather than leave the sensitive value in place.
+            try:
+                page.delete_annot(annot)
+            except Exception:
+                pass
+
     return found
 
 
@@ -333,7 +416,14 @@ def redact_file(
         for index in range(doc.page_count):
             page = doc.load_page(index)
             matches = find_matches(page, patterns, index + 1)
+
+            # Annotations must be handled before redaction annots are added, so
+            # the freshly added ones are not themselves scanned.
+            annotation_matches = _scrub_annotations(page, patterns, index + 1)
+            result.annotations_scrubbed += len(annotation_matches)
+
             result.matches.extend(matches)
+            result.matches.extend(annotation_matches)
 
             if scrub_form_fields:
                 result.form_fields_cleared += _clear_form_fields(page, patterns)

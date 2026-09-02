@@ -26,7 +26,12 @@ hostile reader and tries to get the values back out three ways:
    to `123456789` is still caught,
 3. a raw sweep of every object and stream in the file, which catches text that
    survived somewhere other than the page: metadata, annotations, form field
-   values, an embedded attachment.
+   values, an embedded attachment,
+4. **a fresh pattern scan of the finished file** — page text, annotations and
+   form fields — which is the only check that can catch a leak in a place the
+   first pass never looked. Checking only the values already found cannot: if
+   the redactor never saw an SSN in a comment, it has no value to look for, and
+   reports a clean pass over a live leak.
 
 If anything is still recoverable, the run **fails** with a non-zero exit code
 and the report says which value leaked and through which channel.
@@ -67,7 +72,8 @@ for real.
 
 | Pattern | On by default | Notes |
 |---|---|---|
-| `ssn` | yes | Dashed, spaced, or bare 9 digits. Rejects area `000`/`666`/`9xx`, group `00`, serial `0000`, and repeated-digit placeholders. |
+| `ssn` | yes | Dashed, spaced, dotted, or bare 9 digits. Separators must be **consistent** (both or neither), which is what keeps a hyphenated ZIP+4 out. Rejects area `000`/`666`/`9xx`, group `00`, serial `0000`, and repeated-digit placeholders. |
+| `ssn_strict` | no | Same, but separators are required — never matches bare 9 digits. Use when false positives cost more than a miss. |
 | `itin` | yes | `9xx-NN-NNNN` with `NN` in the IRS-assigned ranges. |
 | `ein` | yes | `NN-NNNNNNN`. |
 | `routing` | yes | 9 digits **validated against the ABA checksum**, so ordinary 9-digit numbers are not touched. |
@@ -79,14 +85,31 @@ for real.
 
 `python -m pdf_redact --list-patterns` prints this at any time.
 
-### The one tradeoff worth knowing
+### The tradeoff, with real numbers
 
 `ssn` and `itin` match **bare, unseparated 9-digit numbers**, because dependent
 SSNs on real tax documents are frequently typed without dashes and missing one
-is much worse than over-redacting. The cost is that an unrelated 9-digit number
-in SSN- or ITIN-valid shape (an invoice or document control number, say) can be
-caught too. This is exactly what `--dry-run` is for. Checksummed patterns
-(`routing`, `creditcard`) do not have this problem.
+is much worse than over-redacting.
+
+Measured against 200,000 random 9-digit numbers, that costs:
+
+| Rule | Fires on a random number of that length |
+|---|---|
+| `ssn` | 88.9% of 9-digit |
+| `itin` | 4.4% of 9-digit |
+| `routing` (ABA checksum) | 10.0% of 9-digit |
+| `creditcard` (Luhn) | 9.9% of 16-digit |
+| **any default rule, bare 9-digit** | **94.0%** |
+
+So a genuinely bare, unlabelled 9-digit number on your document is very likely
+to be redacted. Checksums help, but a checksum that passes 1 in 10 numbers is
+not a filter you should lean on. What actually keeps false positives down is
+formatting: a hyphenated ZIP+4, a phone number, an EIN and a dollar figure are
+all excluded structurally, not by luck.
+
+Two ways to manage it: run `--dry-run` first on any new document type, and use
+`--patterns ssn_strict,...` if you would rather require separators and accept
+the risk of missing an undashed dependent SSN.
 
 ## Scanned documents
 
@@ -102,6 +125,19 @@ have looked at those pages yourself and know they are safe.
 
 When redaction does run on a scanned page, the overlapping image pixels are
 destroyed too, not just the OCR text layer.
+
+## Comments and annotations
+
+Comments, sticky notes, callouts and stamps store their text in the annotation
+dictionary rather than the page content stream, so removing the page glyphs does
+not touch them. A reviewer note reading "confirm client SSN 123-45-6789"
+survives an otherwise perfect redaction — and because nothing on the *page*
+matched, the run would report a clean pass over a live leak.
+
+Annotation text (`/Contents`, `/T`, `/Subj`, and the `/RC` rich-text copy) is
+therefore scanned as a first-class source of text, and matches are replaced with
+`[REDACTED]`. Any annotation that cannot be rewritten safely is deleted rather
+than left in place.
 
 ## Fillable forms
 

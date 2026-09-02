@@ -13,10 +13,11 @@ from __future__ import annotations
 
 import re
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Sequence
+from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 import pymupdf
 
+from .patterns import Pattern
 from .redactor import mask
 
 
@@ -39,7 +40,7 @@ def _extracted_text(doc: pymupdf.Document) -> str:
     return "\n".join(parts)
 
 
-def _raw_blobs(doc: pymupdf.Document, limit: int = 20000) -> List[bytes]:
+def _raw_blobs(doc: pymupdf.Document, limit: int = 20000) -> Tuple[List[bytes], bool]:
     """Every object definition and decompressed stream in the file.
 
     Glyphs in a content stream are font-encoded and often will not appear as
@@ -48,10 +49,13 @@ def _raw_blobs(doc: pymupdf.Document, limit: int = 20000) -> List[bytes]:
     metadata, annotation contents, form field values, attachments.
     """
     blobs: List[bytes] = []
+    truncated = False
     try:
-        length = min(doc.xref_length(), limit)
+        total = doc.xref_length()
     except Exception:
-        return blobs
+        return blobs, truncated
+    length = min(total, limit)
+    truncated = total > limit
     for xref in range(1, length):
         try:
             definition = doc.xref_object(xref, compressed=False)
@@ -64,7 +68,7 @@ def _raw_blobs(doc: pymupdf.Document, limit: int = 20000) -> List[bytes]:
                 blobs.append(doc.xref_stream(xref))
         except Exception:
             pass
-    return blobs
+    return blobs, truncated
 
 
 def _needles(value: str) -> List[bytes]:
@@ -83,11 +87,63 @@ def _needles(value: str) -> List[bytes]:
     return needles
 
 
+
+def residual_scan(doc: pymupdf.Document, patterns: Sequence[Pattern]) -> List[Dict]:
+    """Re-run the patterns against the finished file.
+
+    Checking only the values the redactor already found cannot catch the case
+    that matters most: text in a place the redactor never looked. If it never
+    saw an SSN in a comment, it has no value to check for, and a verifier
+    driven by that list reports a clean pass over a live leak. Re-scanning the
+    output from scratch - page text, annotations and form fields - is
+    independent of what the first pass happened to notice.
+    """
+    hits: List[Dict] = []
+
+    def _check(text: str, where: str) -> None:
+        if not text or not text.strip():
+            return
+        for pattern in patterns:
+            for match in pattern.regex.finditer(text):
+                group = pattern.group
+                if group and group > (match.re.groups or 0):
+                    continue
+                value = match.group(group) if group else match.group(0)
+                if not value:
+                    continue
+                if pattern.validator is not None and not pattern.validator(value):
+                    continue
+                hits.append({"pattern": pattern.name, "value": mask(value), "where": where})
+
+    for index in range(doc.page_count):
+        page = doc.load_page(index)
+        _check(page.get_text("text"), f"page {index + 1} text")
+
+        try:
+            for annot in page.annots():
+                info = annot.info or {}
+                for key in ("content", "title", "subject"):
+                    _check(info.get(key) or "", f"page {index + 1} annotation /{key}")
+        except Exception:
+            pass
+
+        try:
+            for widget in page.widgets():
+                value = widget.field_value
+                if isinstance(value, str):
+                    _check(value, f"page {index + 1} form field")
+        except Exception:
+            pass
+
+    return hits
+
+
 def verify_output(
     output: Path,
     values: Sequence[str],
     *,
     deep: bool = True,
+    patterns: Optional[Sequence[Pattern]] = None,
 ) -> Dict:
     """Check that none of ``values`` can be recovered from ``output``.
 
@@ -98,6 +154,9 @@ def verify_output(
         "checked_values": len(set(values)),
         "deep_scan": deep,
         "leaks": [],
+        "residual": [],
+        "rescanned": patterns is not None,
+        "truncated_scan": False,
         "metadata_clean": True,
         "passed": True,
         "error": None,
@@ -113,7 +172,8 @@ def verify_output(
     try:
         text = _extracted_text(doc)
         text_digits = _digits_only(text)
-        blobs = _raw_blobs(doc) if deep else []
+        blobs, truncated = _raw_blobs(doc) if deep else ([], False)
+        report["truncated_scan"] = truncated
 
         for value in sorted(set(values)):
             stripped = value.strip()
@@ -140,6 +200,9 @@ def verify_output(
                     {"value": mask(stripped), "channels": sorted(set(channels))}
                 )
 
+        if patterns:
+            report["residual"] = residual_scan(doc, patterns)
+
         metadata = doc.metadata or {}
         leftover = {
             key: val
@@ -152,5 +215,5 @@ def verify_output(
     finally:
         doc.close()
 
-    report["passed"] = not report["leaks"]
+    report["passed"] = not report["leaks"] and not report["residual"]
     return report

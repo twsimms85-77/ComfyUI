@@ -84,19 +84,33 @@ def itin_ok(text: str) -> bool:
     return valid and digits[5:] != "0000"
 
 
-# A separator run that stays on one line: hyphen variants, spaces, dots.
-_SEP = r"[-‐-―− .\t]?"
+# A separator that stays on one line: hyphen variants, space, or dot.
+_SEPCHAR = r"[-‐-―− .]"
+
+# Separators must be CONSISTENT: both present and identical, or both absent.
+# Written as a backreference for exactly that reason. Allowing them to differ
+# makes a hyphenated ZIP+4 look like an SSN - "03301-1234" parses as
+# 033 + "" + 01 + "-" + 1234 - and every tax document carries an address, so
+# the loose form destroys client ZIP codes on essentially every file.
+_SSN_BODY = rf"\d{{3}}({_SEPCHAR}?)\d{{2}}\1\d{{4}}"
 
 _ALL: List[Pattern] = [
     Pattern(
         name="ssn",
-        regex=re.compile(rf"(?<![\d-])\d{{3}}{_SEP}\d{{2}}{_SEP}\d{{4}}(?![\d-])"),
-        description="Social Security number (dashed, spaced, or bare 9 digits)",
+        regex=re.compile(rf"(?<![\d-]){_SSN_BODY}(?![\d-])"),
+        description="Social Security number (dashed, spaced, dotted, or bare 9 digits)",
         validator=ssn_ok,
     ),
     Pattern(
+        name="ssn_strict",
+        regex=re.compile(rf"(?<![\d-])\d{{3}}({_SEPCHAR})\d{{2}}\1\d{{4}}(?![\d-])"),
+        description="SSN, separators required - no bare 9-digit matches",
+        validator=ssn_ok,
+        default_on=False,
+    ),
+    Pattern(
         name="itin",
-        regex=re.compile(rf"(?<![\d-])9\d{{2}}{_SEP}\d{{2}}{_SEP}\d{{4}}(?![\d-])"),
+        regex=re.compile(rf"(?<![\d-])9\d{{2}}({_SEPCHAR}?)\d{{2}}\1\d{{4}}(?![\d-])"),
         description="Individual Taxpayer Identification Number",
         validator=itin_ok,
     ),

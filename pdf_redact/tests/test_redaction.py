@@ -338,3 +338,105 @@ def test_identical_matches_are_not_double_counted(tmp_path):
     matches = find_matches(doc.load_page(0), selected, 1)
     doc.close()
     assert len(matches) == 1
+
+
+# --------------------------------------------------------------------------
+# Text outside the page content stream
+# --------------------------------------------------------------------------
+
+
+def _pdf_with_comment(path: Path, comment: str) -> Path:
+    doc = pymupdf.open()
+    page = doc.new_page()
+    page.insert_text((60, 80), "Nothing sensitive on the page", fontname="cour", fontsize=11)
+    annot = page.add_text_annot((300, 80), comment)
+    annot.update()
+    doc.save(str(path))
+    doc.close()
+    return path
+
+
+def test_ssn_in_a_comment_is_found_and_removed(tmp_path):
+    """A reviewer note is text too, and it is not in the content stream.
+
+    Before this was handled the tool reported "0 redactions, 1 clean" while the
+    SSN sat in plaintext in the output - a real leak behind an all-clear.
+    """
+    source = _pdf_with_comment(tmp_path / "in.pdf", f"Confirm client SSN {SSN}")
+    out = tmp_path / "out.pdf"
+    result = redact_file(source, out, patterns_mod.resolve(["ssn"]))
+
+    assert any("annotation" in m.pattern for m in result.matches)
+    assert SSN.encode() not in out.read_bytes()
+
+    doc = pymupdf.open(out)
+    contents = [(a.info or {}).get("content", "") for a in doc.load_page(0).annots()]
+    doc.close()
+    assert not any(SSN in c for c in contents)
+
+
+def test_residual_scan_catches_a_leak_the_redactor_never_found(tmp_path):
+    """Verification must not depend on what the first pass happened to notice.
+
+    Given an empty list of known values, the rescan still has to fail this file.
+    """
+    source = _pdf_with_comment(tmp_path / "in.pdf", f"SSN {SSN}")
+    report = verify_output(source, [], patterns=patterns_mod.resolve(["ssn"]))
+    assert not report["passed"]
+    assert report["residual"][0]["where"].endswith("annotation /content")
+
+
+def test_form_field_value_is_caught_by_the_residual_scan(tmp_path):
+    doc = pymupdf.open()
+    page = doc.new_page()
+    widget = pymupdf.Widget()
+    widget.field_name = "ssn"
+    widget.field_type = pymupdf.PDF_WIDGET_TYPE_TEXT
+    widget.rect = pymupdf.Rect(60, 60, 260, 80)
+    widget.field_value = SSN
+    page.add_widget(widget)
+    source = tmp_path / "form.pdf"
+    doc.save(str(source))
+    doc.close()
+
+    report = verify_output(source, [], patterns=patterns_mod.resolve(["ssn"]))
+    assert not report["passed"]
+
+
+# --------------------------------------------------------------------------
+# Separator consistency / ZIP+4
+# --------------------------------------------------------------------------
+
+
+def test_zip_plus_four_is_not_mistaken_for_an_ssn(tmp_path):
+    """Every tax document carries an address; destroying the ZIP is a real bug.
+
+    "03301-1234" parses as 033 + "" + 01 + "-" + 1234 under a rule that lets
+    the two separators differ, which is why they must match.
+    """
+    source = build_pdf(tmp_path / "in.pdf", lines=["Concord, NH 03301-1234", f"SSN {SSN}"])
+    out = tmp_path / "out.pdf"
+    redact_file(source, out, patterns_mod.resolve(patterns_mod.DEFAULT_PATTERNS))
+    text = page_text(out)
+    assert "03301-1234" in text
+    assert SSN not in text
+
+
+@pytest.mark.parametrize(
+    "value", ["123-45-6789", "234 56 7890", "345.67.8901", "456789012", "001020003"]
+)
+def test_every_real_ssn_format_still_matches(value):
+    match = patterns_mod.REGISTRY["ssn"].regex.search(value)
+    assert match and patterns_mod.ssn_ok(match.group(0))
+
+
+@pytest.mark.parametrize("value", ["03301-1234", "90210-4567", "12345-6789"])
+def test_mixed_separator_shapes_are_rejected(value):
+    match = patterns_mod.REGISTRY["ssn"].regex.search(value)
+    assert not (match and patterns_mod.ssn_ok(match.group(0)))
+
+
+def test_ssn_strict_refuses_bare_nine_digits():
+    strict = patterns_mod.REGISTRY["ssn_strict"].regex
+    assert strict.search("123-45-6789")
+    assert not strict.search("456789012")
